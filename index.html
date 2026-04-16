@@ -81,11 +81,12 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .kpi.cp::after{background:linear-gradient(90deg,#a78bfa,#c4b5fd);}
 .kpi.cr::after{background:linear-gradient(90deg,#ef4444,#f87171);}
 .kpi.ct::after{background:linear-gradient(90deg,#14b8a6,#5eead4);}
+.kpi.cm::after{background:linear-gradient(90deg,#f472b6,#f9a8d4);}
 .kpi-lbl{font-size:.63rem;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--text3);margin-bottom:10px;}
 .kpi-val{font-size:1.75rem;font-weight:800;line-height:1;letter-spacing:-.02em;}
 .kpi.ci .kpi-val{color:#818cf8;}.kpi.cg .kpi-val{color:#4ade80;}.kpi.cb .kpi-val{color:#7dd3fc;}
 .kpi.co .kpi-val{color:#fbbf24;}.kpi.cp .kpi-val{color:#c4b5fd;}.kpi.cr .kpi-val{color:#f87171;}
-.kpi.ct .kpi-val{color:#5eead4;}
+.kpi.ct .kpi-val{color:#5eead4;}.kpi.cm .kpi-val{color:#f9a8d4;}
 .kpi-sub{font-size:.67rem;color:var(--text3);margin-top:6px;font-family:'IBM Plex Mono',monospace;}
 
 /* CHARTS ROW */
@@ -163,7 +164,6 @@ th.srt{color:var(--accent2);}
 th.srt .sarr{opacity:1;color:var(--accent2);}
 th.nc{text-align:right;}
 th.nc .thi{justify-content:flex-end;}
-/* Compact numeric columns */
 th.compact{width:1%;padding:10px 8px;}
 tbody tr{border-bottom:1px solid var(--border);transition:background .1s;}
 tbody tr:last-child{border-bottom:none;}
@@ -177,6 +177,9 @@ td:last-child{border-right:none;}
 .n.z{color:var(--text3);}
 .n.g{color:var(--green);}
 .n.w{color:var(--orange);}
+/* Inbound column styling — pink accent */
+.n.ib{color:#f9a8d4;}
+.n.ib.z{color:var(--text3);}
 .ntot{font-family:'IBM Plex Mono',monospace;font-weight:700;text-align:right;color:#4ade80;background:rgba(34,197,94,.05);}
 .ntot.low{color:var(--orange);background:rgba(245,158,11,.06);}
 .td-cost{font-family:'IBM Plex Mono',monospace;font-weight:600;text-align:right;color:#5eead4;}
@@ -239,6 +242,7 @@ td:last-child{border-right:none;}
     <div class="kpi ci"><div class="kpi-lbl">Total Sellable</div><div class="kpi-val" id="k0">—</div><div class="kpi-sub">FC + FBA combined</div></div>
     <div class="kpi cg"><div class="kpi-lbl">FC Sellable</div><div class="kpi-val" id="k1">—</div><div class="kpi-sub">Warehouse stock</div></div>
     <div class="kpi cb"><div class="kpi-lbl">FBA Available</div><div class="kpi-val" id="k2">—</div><div class="kpi-sub">Amazon fulfillable</div></div>
+    <div class="kpi cm"><div class="kpi-lbl">Total Inbound</div><div class="kpi-val" id="k7">—</div><div class="kpi-sub">Units in transit to FBA</div></div>
     <div class="kpi cp"><div class="kpi-lbl">Total Unsellable</div><div class="kpi-val" id="k3">—</div><div class="kpi-sub">FC + FBA unsellable</div></div>
     <div class="kpi co"><div class="kpi-lbl">Low Stock SKUs</div><div class="kpi-val" id="k4">—</div><div class="kpi-sub">Total sellable &lt; 50</div></div>
     <div class="kpi cr"><div class="kpi-lbl">Flagged SKUs</div><div class="kpi-val" id="k5">—</div><div class="kpi-sub">Rows with any issue</div></div>
@@ -253,6 +257,7 @@ td:last-child{border-right:none;}
         <div class="bar-legend">
           <div class="bl-item"><div class="bl-dot" style="background:#6366f1"></div>FC Sellable</div>
           <div class="bl-item"><div class="bl-dot" style="background:#38bdf8"></div>FBA Available</div>
+          <div class="bl-item"><div class="bl-dot" style="background:#f472b6"></div>Inbound</div>
         </div>
       </div>
       <div class="bar-wrap"><canvas id="cbar"></canvas></div>
@@ -331,6 +336,7 @@ td:last-child{border-right:none;}
             <th class="nc compact" onclick="sortBy('fc_unsellable')"><div class="thi">FC Unsell<span class="sarr" data-col="fc_unsellable">↕</span></div></th>
             <th class="nc compact" onclick="sortBy('fba_available')"><div class="thi">FBA Avail<span class="sarr" data-col="fba_available">↕</span></div></th>
             <th class="nc compact" onclick="sortBy('fba_unsellable')"><div class="thi">FBA Unsell<span class="sarr" data-col="fba_unsellable">↕</span></div></th>
+            <th class="nc compact" onclick="sortBy('inbound')"><div class="thi">Inbound<span class="sarr" data-col="inbound">↕</span></div></th>
             <th class="nc compact" onclick="sortBy('total')"><div class="thi">Total<span class="sarr" data-col="total">↕</span></div></th>
             <th class="nc" onclick="sortBy('unit_cost')"><div class="thi">Unit Cost<span class="sarr" data-col="unit_cost">↕</span></div></th>
             <th class="nc" onclick="sortBy('total_cost')"><div class="thi">Total Cost<span class="sarr" data-col="total_cost">↕</span></div></th>
@@ -354,7 +360,7 @@ td:last-child{border-right:none;}
 // CONFIG
 // ══════════════════════════════════════════
 const SHEET_URL="https://docs.google.com/spreadsheets/d/1jZv_Qqeg2RWXssYroxyS3_fCW_D09Nqhbf6Px9s6pR4/export?format=xlsx";
-const SH_SELL="Sellable_Inventory", SH_UN="Unsellable", SH_FBA="FBA_Inventory";
+const SH_SELL="Sellable_Inventory", SH_UN="Unsellable", SH_FBA="FBA_Inventory", SH_RPT="FBAInvReport";
 
 // ══════════════════════════════════════════
 // COST MAP (₹ per unit, keyed by ASIN)
@@ -591,6 +597,7 @@ function downloadExcel(){
       'FC Unsellable':   r.fc_unsellable,
       'FBA Available':   r.fba_available,
       'FBA Unsellable':  r.fba_unsellable,
+      'Inbound':         r.inbound,
       'Total Sellable':  r.total,
       'Unit Cost (₹)':   r.unit_cost > 0 ? r.unit_cost : '',
       'Total Cost (₹)':  r.total_cost > 0 ? r.total_cost : '',
@@ -598,7 +605,7 @@ function downloadExcel(){
     };
   });
   const ws = XLSX.utils.json_to_sheet(exportData);
-  ws['!cols'] = [{wch:40},{wch:16},{wch:12},{wch:14},{wch:13},{wch:14},{wch:10},{wch:14},{wch:16},{wch:35}];
+  ws['!cols'] = [{wch:40},{wch:16},{wch:12},{wch:14},{wch:13},{wch:14},{wch:10},{wch:10},{wch:14},{wch:16},{wch:35}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
   const today = new Date().toISOString().slice(0,10);
@@ -648,16 +655,17 @@ function parseSheets(ab){
   step('Parsing…');
   const wb=XLSX.read(ab,{type:'array'});
   dbg('Sheets:',wb.SheetNames.join(', '));
-  const sN=findSheet(wb,SH_SELL),uN=findSheet(wb,SH_UN),fN=findSheet(wb,SH_FBA);
+  const sN=findSheet(wb,SH_SELL),uN=findSheet(wb,SH_UN),fN=findSheet(wb,SH_FBA),rN=findSheet(wb,SH_RPT);
   if(!sN)throw new Error(`Sheet "${SH_SELL}" not found. Available: ${wb.SheetNames.join(', ')}`);
   if(!uN)throw new Error(`Sheet "${SH_UN}" not found. Available: ${wb.SheetNames.join(', ')}`);
   if(!fN)throw new Error(`Sheet "${SH_FBA}" not found. Available: ${wb.SheetNames.join(', ')}`);
-  dbg('Mapped →',sN,'|',uN,'|',fN);
+  dbg('Mapped →',sN,'|',uN,'|',fN,'| report:',(rN||'NOT FOUND'));
   const sell=sheetToRows(wb.Sheets[sN]);
   const unsell=sheetToRows(wb.Sheets[uN]);
   const fba=sheetToRows(wb.Sheets[fN]);
-  dbg('Rows → sell:',sell.length,'unsell:',unsell.length,'fba:',fba.length);
-  return{sell,unsell,fba};
+  const rpt=rN?sheetToRows(wb.Sheets[rN]):[];
+  dbg('Rows → sell:',sell.length,'unsell:',unsell.length,'fba:',fba.length,'rpt:',rpt.length);
+  return{sell,unsell,fba,rpt};
 }
 
 // ══════════════════════════════════════════
@@ -676,10 +684,63 @@ function detectCol(headers,patterns){
 }
 
 // ══════════════════════════════════════════
+// BUILD INBOUND MAP from FBAInvReport
+// Matches by SKU first (case-insensitive), then by ASIN.
+// Sums all inbound-quantity rows for the same SKU/ASIN.
+// ══════════════════════════════════════════
+function buildInboundMap(rpt){
+  // Map keyed by normalised SKU → inbound qty
+  const bySkuMap  = new Map();
+  // Map keyed by normalised ASIN → inbound qty
+  const byAsinMap = new Map();
+
+  if(!rpt.length){
+    dbg('FBAInvReport: sheet empty or not found, inbound will be 0 for all SKUs');
+    return {bySkuMap, byAsinMap};
+  }
+
+  const rh = Object.keys(rpt[0]);
+  const rSkuCol  = detectCol(rh, ['seller-sku','sellersku','sku','msku','merchant-sku']);
+  const rAsinCol = detectCol(rh, ['asin']);
+  const rQtyCol  = detectCol(rh, ['inbound-quantity','inboundquantity','inbound quantity','inbound-qty','inboundqty','inbound']);
+
+  dbg('FBAInvReport cols → sku:',rSkuCol,'asin:',rAsinCol,'inbound-qty:',rQtyCol);
+
+  if(!rQtyCol){
+    dbg('WARNING: inbound-quantity column not found in FBAInvReport. Headers:',rh.join(', '));
+    return {bySkuMap, byAsinMap};
+  }
+
+  for(const row of rpt){
+    const qty = toNum(row[rQtyCol]);
+    if(!qty) continue; // skip zero / blank rows
+
+    if(rSkuCol){
+      const sku = norm(row[rSkuCol]);
+      if(sku && sku !== 'SELLER-SKU' && sku !== 'SKU'){
+        bySkuMap.set(sku, (bySkuMap.get(sku)||0) + qty);
+      }
+    }
+    if(rAsinCol){
+      const asin = norm(row[rAsinCol]);
+      if(asin && asin !== 'ASIN'){
+        byAsinMap.set(asin, (byAsinMap.get(asin)||0) + qty);
+      }
+    }
+  }
+
+  dbg('Inbound map → by-sku entries:',bySkuMap.size,'by-asin entries:',byAsinMap.size);
+  return {bySkuMap, byAsinMap};
+}
+
+// ══════════════════════════════════════════
 // MERGE
 // ══════════════════════════════════════════
-function mergeData(sell,unsell,fba){
+function mergeData(sell,unsell,fba,rpt){
   step('Merging by ASIN…');
+
+  // Build inbound lookup maps
+  const {bySkuMap, byAsinMap} = buildInboundMap(rpt);
 
   const sh=sell.length?Object.keys(sell[0]):[];
   const sc={
@@ -757,6 +818,16 @@ function mergeData(sell,unsell,fba){
     }
   }
 
+  // Helper: resolve inbound for a given resolved SKU name + ASIN
+  // Priority: exact SKU match → ASIN match
+  function resolveInbound(resolvedSku, asin){
+    const skuKey = norm(resolvedSku);
+    if(bySkuMap.has(skuKey)) return bySkuMap.get(skuKey);
+    const asinKey = norm(asin);
+    if(byAsinMap.has(asinKey)) return byAsinMap.get(asinKey);
+    return 0;
+  }
+
   const merged=[];
   const fbaSet=new Set([...fbaAvailMap.keys(),...fbaUnsellMap.keys(),...fbaSkuMap.keys()]);
 
@@ -768,10 +839,11 @@ function mergeData(sell,unsell,fba){
     const fcSell     = sellMap.get(asin)??0;
     const fcUnsell   = unMap.get(asin)??0;
     const total      = (hasFCMatch?fcSell:0)+fbaAvail;
+    const inbound    = resolveInbound(sku, asin);
     const unit_cost  = COST_MAP[asin]||0;
     const total_cost = unit_cost * total;
     const issues     = buildIssues({hasFCMatch,isFCOnly:false,fcSell,fbaAvail,fcUnsell,fbaUnsell,total});
-    merged.push({sku,asin,fc_sellable:hasFCMatch?fcSell:0,fc_unsellable:hasFCMatch?fcUnsell:0,fba_available:fbaAvail,fba_unsellable:fbaUnsell,total,unit_cost,total_cost,hasFCMatch,source:'fba',issues,issue_count:issues.length});
+    merged.push({sku,asin,fc_sellable:hasFCMatch?fcSell:0,fc_unsellable:hasFCMatch?fcUnsell:0,fba_available:fbaAvail,fba_unsellable:fbaUnsell,inbound,total,unit_cost,total_cost,hasFCMatch,source:'fba',issues,issue_count:issues.length});
   }
 
   const allFCAsins=new Set([...sellMap.keys(),...unMap.keys()]);
@@ -781,10 +853,11 @@ function mergeData(sell,unsell,fba){
     const fcUnsell = unMap.get(asin)??0;
     const sku      = resolveSkuName(asin, sellSku.get(asin)||'--');
     const total    = fcSell;
+    const inbound  = resolveInbound(sku, asin);
     const unit_cost  = COST_MAP[asin]||0;
     const total_cost = unit_cost * total;
     const issues   = buildIssues({hasFCMatch:true,isFCOnly:true,fcSell,fbaAvail:0,fcUnsell,fbaUnsell:0,total});
-    merged.push({sku,asin,fc_sellable:fcSell,fc_unsellable:fcUnsell,fba_available:0,fba_unsellable:0,total,unit_cost,total_cost,hasFCMatch:true,source:'fc',issues,issue_count:issues.length});
+    merged.push({sku,asin,fc_sellable:fcSell,fc_unsellable:fcUnsell,fba_available:0,fba_unsellable:0,inbound,total,unit_cost,total_cost,hasFCMatch:true,source:'fc',issues,issue_count:issues.length});
   }
 
   dbg('Merged:',merged.length);
@@ -824,6 +897,7 @@ function renderKPIs(rows){
   set('k0',rows.reduce((s,r)=>s+r.total,0).toLocaleString());
   set('k1',rows.reduce((s,r)=>s+r.fc_sellable,0).toLocaleString());
   set('k2',rows.reduce((s,r)=>s+r.fba_available,0).toLocaleString());
+  set('k7',rows.reduce((s,r)=>s+r.inbound,0).toLocaleString());
   set('k3',rows.reduce((s,r)=>s+r.fc_unsellable+r.fba_unsellable,0).toLocaleString());
   set('k4',rows.filter(r=>r.total>=0&&r.total<50).length.toLocaleString());
   set('k5',rows.filter(r=>r.issue_count>0).length.toLocaleString());
@@ -836,8 +910,10 @@ function renderKPIs(rows){
 // CHARTS
 // ══════════════════════════════════════════
 function renderCharts(rows){
-  // Stock bar chart
-  const top15=[...rows].filter(r=>r.fc_sellable>0||r.fba_available>0).sort((a,b)=>(b.fc_sellable+b.fba_available)-(a.fc_sellable+a.fba_available)).slice(0,15);
+  // Stock bar chart — now includes Inbound as a third dataset
+  const top15=[...rows].filter(r=>r.fc_sellable>0||r.fba_available>0||r.inbound>0)
+    .sort((a,b)=>(b.fc_sellable+b.fba_available)-(a.fc_sellable+a.fba_available))
+    .slice(0,15);
   const labels=top15.map(r=>{const s=str(r.sku);return s.length>16?s.slice(0,15)+'…':s;});
 
   if(barChart)barChart.destroy();
@@ -846,6 +922,7 @@ function renderCharts(rows){
     data:{labels,datasets:[
       {label:'FC Sellable',data:top15.map(r=>r.fc_sellable),backgroundColor:'rgba(99,102,241,0.8)',borderColor:'#6366f1',borderWidth:1,borderRadius:4,borderSkipped:false},
       {label:'FBA Available',data:top15.map(r=>r.fba_available),backgroundColor:'rgba(56,189,248,0.8)',borderColor:'#38bdf8',borderWidth:1,borderRadius:4,borderSkipped:false},
+      {label:'Inbound',data:top15.map(r=>r.inbound),backgroundColor:'rgba(244,114,182,0.8)',borderColor:'#f472b6',borderWidth:1,borderRadius:4,borderSkipped:false},
     ]},
     options:{
       responsive:true,maintainAspectRatio:false,
@@ -880,7 +957,7 @@ function renderCharts(rows){
     options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{display:false},tooltip:{enabled:hasD,backgroundColor:'#0a0b10',borderColor:'#2a2d3e',borderWidth:1,titleColor:'#e8eaf6',bodyColor:'#9395a5',padding:10}}}
   });
 
-  // ── COST BAR CHART (Top 15 by total inventory cost) ──
+  // Cost bar chart
   const costRows = [...rows].filter(r=>r.total_cost>0).sort((a,b)=>b.total_cost-a.total_cost).slice(0,15);
   const costLabels = costRows.map(r=>{const s=str(r.sku);return s.length>16?s.slice(0,15)+'…':s;});
 
@@ -912,7 +989,7 @@ function renderCharts(rows){
     }
   });
 
-  // ── COST DONUT (Top 10 by unit cost, % of total portfolio cost) ──
+  // Cost donut
   const top10cost = [...rows].filter(r=>r.unit_cost>0).sort((a,b)=>b.unit_cost-a.unit_cost).slice(0,10);
   const totalPortfolioCost = rows.reduce((s,r)=>s+r.total_cost,0);
   set('dctotal', fmtCur(totalPortfolioCost));
@@ -941,7 +1018,6 @@ function renderCharts(rows){
     }}
   });
 
-  // Legend for cost donut
   const leg = $('costdonutlegend');
   leg.innerHTML = top10cost.map((r,i)=>`
     <div class="dl-item">
@@ -958,7 +1034,7 @@ function renderTable(rows){
   set('rbadge',`${rows.length.toLocaleString()} rows`);
   set('tfc',`Showing ${rows.length.toLocaleString()} of ${allRows.length.toLocaleString()} entries`);
   if(!rows.length){
-    tbody.innerHTML=`<tr><td colspan="10"><div class="empty"><div class="ei">📦</div><p>No rows match the current filter.</p></div></td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="11"><div class="empty"><div class="ei">📦</div><p>No rows match the current filter.</p></div></td></tr>`;
     return;
   }
   tbody.innerHTML=rows.map(r=>{
@@ -969,6 +1045,7 @@ function renderTable(rows){
     const totalCostHtml = r.total_cost>0
       ? `<td class="td-cost">${fmtCurFull(r.total_cost)}</td>`
       : `<td class="td-cost z">—</td>`;
+    const inboundClass = r.inbound > 0 ? 'n ib compact' : 'n ib z compact';
     return `<tr>
       <td class="td-sku" title="${esc(r.sku)}">${esc(r.sku)}</td>
       <td class="td-asin">${esc(r.asin)}</td>
@@ -976,6 +1053,7 @@ function renderTable(rows){
       <td class="n compact ${r.fc_unsellable>0?'w':'z'}">${r.fc_unsellable.toLocaleString()}</td>
       <td class="n compact ${r.fba_available>0?'g':'z'}">${r.fba_available.toLocaleString()}</td>
       <td class="n compact ${r.fba_unsellable>0?'w':'z'}">${r.fba_unsellable.toLocaleString()}</td>
+      <td class="${inboundClass}">${r.inbound > 0 ? r.inbound.toLocaleString() : '—'}</td>
       <td class="${tc} compact">${r.total.toLocaleString()}</td>
       ${unitCostHtml}
       ${totalCostHtml}
@@ -1053,8 +1131,8 @@ async function boot(){
   const t0=performance.now();
   try{
     const ab=await fetchData();
-    const{sell,unsell,fba}=parseSheets(ab);
-    allRows=mergeData(sell,unsell,fba);
+    const{sell,unsell,fba,rpt}=parseSheets(ab);
+    allRows=mergeData(sell,unsell,fba,rpt);
     filteredRows=[...allRows];
     renderKPIs(allRows);
     renderCharts(allRows);
