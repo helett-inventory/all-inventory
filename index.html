@@ -363,6 +363,31 @@ const SHEET_URL="https://docs.google.com/spreadsheets/d/1jZv_Qqeg2RWXssYroxyS3_f
 const SH_SELL="Sellable_Inventory", SH_UN="Unsellable", SH_FBA="FBA_Inventory", SH_RPT="FBAInvReport";
 
 // ══════════════════════════════════════════
+// ASIN BLOCKLIST — these ASINs are excluded from the dashboard entirely
+// ══════════════════════════════════════════
+const ASIN_BLOCKLIST = new Set([
+  "B0CN1153M4","B0F5Q4RV2R","B0BRXX6HMR","B0BYZVNPL4","B0C9CVWLL3",
+  "B0D4F7Y3NZ","B0CN11FZW5","B0888WZ411","B0C8TW9ZR6","B0CL4GVKSN",
+  "B0BFRS5BLT","B0CB1DDNV7","B01G46PYPO","B0BZ8HF4WL","B07TW7QMBN",
+  "B07TD94GPJ","B0CLYLNCZD","B0CFHRLWM2","B0B5VQYGW6","B0CQ24C7DX",
+  "B0DD7LH58C","B0CQTJH6WX","B0D4F12NJT","B0CD7YNMRM","B07QLRJGDJ",
+  "B0DXKWKBWQ","B0CHFQPZMK","B0CB8YRRZ4","B0DLKM4N5G","B0FZL52KY4",
+  "B0DGGPBX97","B0CQNM753Q","B0F1KF6P4J","B07XP99KF8",
+  "B0CXPX968F","B0C999P5KB","B09FGVPBHK","B0BPPNNVT5","B0DXC17SSS",
+  "B0BDFLDDKR","B0BJC4WGDK","B084TQMCLN","B016DGF0ZY","B0BLNLYVFQ",
+  "B0DD6WNP26","B08LQ1G624","B0DPJ8BWCG","B0GV4K1P7L","B0CNLW386T",
+  "B013JYPTA4","B0BRKVYG8X","B07TB4DZTK","B0DJK3GNCY","B01DYJ8R4O",
+  "B0D9KKFVT6","B0BL3LJHRB","B08FC23JD7","B07T2VZMSG","B0D9KJJ7WF",
+  "B07FDG8GQT","B01H35Y352","B07MK547MK","B0C3HZDJ5C","B0FL2VFCT9",
+  "B0C96F68YL","B0BRXVQ85M","B0FZSCW83R","B0BD9191XX","B0DQGSMG4N",
+  "B091TCSG4D","B07T85LWH7","B09TY1SZP6","B0DTQ3ZCBH","B0DRL8ZDWX",
+  "B086ZFW6HD","B0BJMLX4RR","B0CQTK12SW","B09K4M1JSN","B09TWLRXZ3",
+  "B07Q5PC3SV","B0F6MXY655","B0BRN9ZGL1","B0CC8ZFPRX","B0DD7RS56N",
+  "B0CB8X5RCN","B0C8NNB48Z","B08PSLZYZV","B0FGTMFZFM","B0DGCG6MN4",
+  "B0CR7JGRYJ","B0FHQSL9DH","B0CMMMJ5WY"
+]);
+
+// ══════════════════════════════════════════
 // COST MAP (₹ per unit, keyed by ASIN)
 // ══════════════════════════════════════════
 const COST_MAP = {
@@ -685,13 +710,9 @@ function detectCol(headers,patterns){
 
 // ══════════════════════════════════════════
 // BUILD INBOUND MAP from FBAInvReport
-// Matches by SKU first (case-insensitive), then by ASIN.
-// Sums all inbound-quantity rows for the same SKU/ASIN.
 // ══════════════════════════════════════════
 function buildInboundMap(rpt){
-  // Map keyed by normalised SKU → inbound qty
   const bySkuMap  = new Map();
-  // Map keyed by normalised ASIN → inbound qty
   const byAsinMap = new Map();
 
   if(!rpt.length){
@@ -713,7 +734,7 @@ function buildInboundMap(rpt){
 
   for(const row of rpt){
     const qty = toNum(row[rQtyCol]);
-    if(!qty) continue; // skip zero / blank rows
+    if(!qty) continue;
 
     if(rSkuCol){
       const sku = norm(row[rSkuCol]);
@@ -739,7 +760,6 @@ function buildInboundMap(rpt){
 function mergeData(sell,unsell,fba,rpt){
   step('Merging by ASIN…');
 
-  // Build inbound lookup maps
   const {bySkuMap, byAsinMap} = buildInboundMap(rpt);
 
   const sh=sell.length?Object.keys(sell[0]):[];
@@ -774,7 +794,8 @@ function mergeData(sell,unsell,fba,rpt){
   if(sc.asin&&sc.qty){
     for(const row of sell){
       const asin=norm(row[sc.asin]);
-      if(!asin||asin==='-'||asin==='ASIN')continue;
+      // ── BLOCKLIST CHECK ──
+      if(!asin||asin==='-'||asin==='ASIN'||ASIN_BLOCKLIST.has(asin))continue;
       sellMap.set(asin,(sellMap.get(asin)||0)+toNum(row[sc.qty]));
       const sku=str(row[sc.sku]||'');
       if(sku&&!sellSku.has(asin))sellSku.set(asin,sku);
@@ -785,7 +806,8 @@ function mergeData(sell,unsell,fba,rpt){
   if(uc.asin&&lastDC){
     for(const row of unsell){
       const asin=norm(row[uc.asin]);
-      if(!asin||asin==='-'||asin==='ASIN')continue;
+      // ── BLOCKLIST CHECK ──
+      if(!asin||asin==='-'||asin==='ASIN'||ASIN_BLOCKLIST.has(asin))continue;
       unMap.set(asin,(unMap.get(asin)||0)+toNum(row[lastDC]));
     }
   }
@@ -796,7 +818,8 @@ function mergeData(sell,unsell,fba,rpt){
   if(useConditionFormat){
     for(const row of fba){
       const asin=norm(row[fc.asin]);
-      if(!asin||asin==='-'||asin==='ASIN')continue;
+      // ── BLOCKLIST CHECK ──
+      if(!asin||asin==='-'||asin==='ASIN'||ASIN_BLOCKLIST.has(asin))continue;
       const sku=str(row[fc.sku]||'');
       const condition=norm(row[fc.condition]);
       const qty=toNum(row[fc.qty]);
@@ -810,7 +833,8 @@ function mergeData(sell,unsell,fba,rpt){
   } else {
     for(const row of fba){
       const asin=norm(row[fc.asin]);
-      if(!asin||asin==='-'||asin==='ASIN')continue;
+      // ── BLOCKLIST CHECK ──
+      if(!asin||asin==='-'||asin==='ASIN'||ASIN_BLOCKLIST.has(asin))continue;
       const sku=str(row[fc.sku]||'');
       if(sku&&!fbaSkuMap.has(asin))fbaSkuMap.set(asin,sku);
       fbaAvailMap.set(asin,(fbaAvailMap.get(asin)||0)+toNum(fc.avail?row[fc.avail]:0));
@@ -818,8 +842,6 @@ function mergeData(sell,unsell,fba,rpt){
     }
   }
 
-  // Helper: resolve inbound for a given resolved SKU name + ASIN
-  // Priority: exact SKU match → ASIN match
   function resolveInbound(resolvedSku, asin){
     const skuKey = norm(resolvedSku);
     if(bySkuMap.has(skuKey)) return bySkuMap.get(skuKey);
@@ -832,6 +854,8 @@ function mergeData(sell,unsell,fba,rpt){
   const fbaSet=new Set([...fbaAvailMap.keys(),...fbaUnsellMap.keys(),...fbaSkuMap.keys()]);
 
   for(const asin of fbaSet){
+    // ── BLOCKLIST CHECK (safety net) ──
+    if(ASIN_BLOCKLIST.has(asin))continue;
     const sku        = resolveSkuName(asin, fbaSkuMap.get(asin)||'--');
     const fbaAvail   = fbaAvailMap.get(asin)||0;
     const fbaUnsell  = fbaUnsellMap.get(asin)||0;
@@ -848,6 +872,8 @@ function mergeData(sell,unsell,fba,rpt){
 
   const allFCAsins=new Set([...sellMap.keys(),...unMap.keys()]);
   for(const asin of allFCAsins){
+    // ── BLOCKLIST CHECK (safety net) ──
+    if(ASIN_BLOCKLIST.has(asin))continue;
     if(fbaSet.has(asin))continue;
     const fcSell   = sellMap.get(asin)??0;
     const fcUnsell = unMap.get(asin)??0;
@@ -860,7 +886,7 @@ function mergeData(sell,unsell,fba,rpt){
     merged.push({sku,asin,fc_sellable:fcSell,fc_unsellable:fcUnsell,fba_available:0,fba_unsellable:0,inbound,total,unit_cost,total_cost,hasFCMatch:true,source:'fc',issues,issue_count:issues.length});
   }
 
-  dbg('Merged:',merged.length);
+  dbg('Merged (after blocklist):',merged.length);
   return merged;
 }
 
@@ -910,7 +936,6 @@ function renderKPIs(rows){
 // CHARTS
 // ══════════════════════════════════════════
 function renderCharts(rows){
-  // Stock bar chart — now includes Inbound as a third dataset
   const top15=[...rows].filter(r=>r.fc_sellable>0||r.fba_available>0||r.inbound>0)
     .sort((a,b)=>(b.fc_sellable+b.fba_available)-(a.fc_sellable+a.fba_available))
     .slice(0,15);
@@ -938,7 +963,6 @@ function renderCharts(rows){
     }
   });
 
-  // Unsellable donut
   const fcUn=rows.reduce((s,r)=>s+r.fc_unsellable,0);
   const fbaUn=rows.reduce((s,r)=>s+r.fba_unsellable,0);
   const grand=fcUn+fbaUn;
@@ -957,7 +981,6 @@ function renderCharts(rows){
     options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{display:false},tooltip:{enabled:hasD,backgroundColor:'#0a0b10',borderColor:'#2a2d3e',borderWidth:1,titleColor:'#e8eaf6',bodyColor:'#9395a5',padding:10}}}
   });
 
-  // Cost bar chart
   const costRows = [...rows].filter(r=>r.total_cost>0).sort((a,b)=>b.total_cost-a.total_cost).slice(0,15);
   const costLabels = costRows.map(r=>{const s=str(r.sku);return s.length>16?s.slice(0,15)+'…':s;});
 
@@ -989,7 +1012,6 @@ function renderCharts(rows){
     }
   });
 
-  // Cost donut
   const top10cost = [...rows].filter(r=>r.unit_cost>0).sort((a,b)=>b.unit_cost-a.unit_cost).slice(0,10);
   const totalPortfolioCost = rows.reduce((s,r)=>s+r.total_cost,0);
   set('dctotal', fmtCur(totalPortfolioCost));
