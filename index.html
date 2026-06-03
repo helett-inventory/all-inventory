@@ -64,7 +64,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 
 /* DASHBOARD */
 #scr-dash{display:none;}
-.main{padding:24px 28px;max-width:1600px;margin:0 auto;}
+.main{padding:16px 18px;}
 
 /* DEBUG */
 #dbg{display:none;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:20px;font-family:'IBM Plex Mono',monospace;font-size:.69rem;color:var(--text2);white-space:pre-wrap;line-height:1.7;}
@@ -247,6 +247,8 @@ td:last-child{border-right:none;}
     <div class="kpi co"><div class="kpi-lbl">Low Stock SKUs</div><div class="kpi-val" id="k4">—</div><div class="kpi-sub">Total sellable &lt; 50</div></div>
     <div class="kpi cr"><div class="kpi-lbl">Flagged SKUs</div><div class="kpi-val" id="k5">—</div><div class="kpi-sub">Rows with any issue</div></div>
     <div class="kpi ct"><div class="kpi-lbl">Total Inventory Cost</div><div class="kpi-val" id="k6">—</div><div class="kpi-sub">Cost × total sellable</div></div>
+    <div class="kpi cb" style="--after-color:#38bdf8;"><div class="kpi-lbl">PO In Transit</div><div class="kpi-val" id="k8" style="color:#38bdf8;">—</div><div class="kpi-sub">Units shipping to FC</div></div>
+    <div class="kpi co"><div class="kpi-lbl">PO In Production</div><div class="kpi-val" id="k9" style="color:#fbbf24;">—</div><div class="kpi-sub">Units being manufactured</div></div>
   </div>
 
   <!-- Stock Charts -->
@@ -297,6 +299,30 @@ td:last-child{border-right:none;}
     </div>
   </div>
 
+  <!-- PO / Purchase Chart -->
+  <div class="cost-charts-row" style="grid-template-columns:2fr 1fr;" id="po-charts-row">
+    <div class="chart-card">
+      <div class="chart-hd">
+        <div class="chart-title">Purchase Orders — Units by SKU (Active Only)</div>
+        <div class="bar-legend">
+          <div class="bl-item"><div class="bl-dot" style="background:#38bdf8"></div>In Transit</div>
+          <div class="bl-item"><div class="bl-dot" style="background:#f59e0b"></div>In Production</div>
+        </div>
+      </div>
+      <div class="bar-wrap"><canvas id="cpobar"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-hd"><div class="chart-title">PO Status Breakdown</div></div>
+      <div class="donut-outer">
+        <div class="donut-ring" style="width:160px;height:160px;">
+          <canvas id="cpodonut" width="160" height="160"></canvas>
+          <div class="donut-ctr"><div class="dc-val" id="dpototal" style="font-size:1.3rem;">—</div><div class="dc-lbl">Active Units</div></div>
+        </div>
+        <div class="dl" id="podonutlegend" style="max-width:240px;gap:8px 14px;"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Table -->
   <div class="tbl-hd">
     <div style="display:flex;align-items:center;gap:10px;">
@@ -338,6 +364,9 @@ td:last-child{border-right:none;}
             <th class="nc compact" onclick="sortBy('fba_unsellable')"><div class="thi">FBA Unsell<span class="sarr" data-col="fba_unsellable">↕</span></div></th>
             <th class="nc compact" onclick="sortBy('inbound')"><div class="thi">Inbound<span class="sarr" data-col="inbound">↕</span></div></th>
             <th class="nc compact" onclick="sortBy('total')"><div class="thi">Total<span class="sarr" data-col="total">↕</span></div></th>
+            <th class="nc compact" onclick="sortBy('po_qty')"><div class="thi">PO Qty<span class="sarr" data-col="po_qty">↕</span></div></th>
+            <th onclick="sortBy('po_status')"><div class="thi">PO Status<span class="sarr" data-col="po_status">↕</span></div></th>
+            <th onclick="sortBy('po_del_date')"><div class="thi">ETA<span class="sarr" data-col="po_del_date">↕</span></div></th>
             <th class="nc" onclick="sortBy('unit_cost')"><div class="thi">Unit Cost<span class="sarr" data-col="unit_cost">↕</span></div></th>
             <th class="nc" onclick="sortBy('total_cost')"><div class="thi">Total Cost<span class="sarr" data-col="total_cost">↕</span></div></th>
             <th onclick="sortBy('issue_count')"><div class="thi">Status<span class="sarr" data-col="issue_count">↕</span></div></th>
@@ -361,6 +390,8 @@ td:last-child{border-right:none;}
 // ══════════════════════════════════════════
 const SHEET_URL="https://docs.google.com/spreadsheets/d/1jZv_Qqeg2RWXssYroxyS3_fCW_D09Nqhbf6Px9s6pR4/export?format=xlsx";
 const SH_SELL="Sellable_Inventory", SH_UN="Unsellable", SH_FBA="FBA_Inventory", SH_RPT="FBAInvReport";
+// PO sheet: try these names in order, then fall back to content-sniff
+const SH_LT_CANDIDATES = ["Leadtime","Lead Time","Lead time","leadtime","PO","Purchase Orders","Sheet1","Shipments"];
 
 // ══════════════════════════════════════════
 // ASIN BLOCKLIST — these ASINs are excluded from the dashboard entirely
@@ -591,8 +622,9 @@ function resolveSkuName(asin, fallback) {
 let allRows=[],filteredRows=[];
 let sortCol=null,sortDir=-1;
 let chips=new Set();
-let barChart=null,donutChart=null,costBarChart=null,costDonutChart=null;
+let barChart=null,donutChart=null,costBarChart=null,costDonutChart=null,poBarChart=null,poDonutChart=null;
 let dbgLog=[];
+let poMapGlobal=new Map();
 
 // ══════════════════════════════════════════
 // UTILS
@@ -624,13 +656,16 @@ function downloadExcel(){
       'FBA Unsellable':  r.fba_unsellable,
       'Inbound':         r.inbound,
       'Total Sellable':  r.total,
+      'PO Qty':          r.po_qty || '',
+      'PO Status':       r.po_status || '',
+      'Del Date':        r.po_del_date || '',
       'Unit Cost (₹)':   r.unit_cost > 0 ? r.unit_cost : '',
       'Total Cost (₹)':  r.total_cost > 0 ? r.total_cost : '',
       'Status Flags':    flags
     };
   });
   const ws = XLSX.utils.json_to_sheet(exportData);
-  ws['!cols'] = [{wch:40},{wch:16},{wch:12},{wch:14},{wch:13},{wch:14},{wch:10},{wch:10},{wch:14},{wch:16},{wch:35}];
+  ws['!cols'] = [{wch:40},{wch:16},{wch:12},{wch:14},{wch:13},{wch:14},{wch:10},{wch:10},{wch:10},{wch:16},{wch:14},{wch:14},{wch:16},{wch:35}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
   const today = new Date().toISOString().slice(0,10);
@@ -678,19 +713,44 @@ function sheetToRows(ws){
 
 function parseSheets(ab){
   step('Parsing…');
-  const wb=XLSX.read(ab,{type:'array'});
+  const wb=XLSX.read(ab,{type:'array',cellDates:true});
   dbg('Sheets:',wb.SheetNames.join(', '));
   const sN=findSheet(wb,SH_SELL),uN=findSheet(wb,SH_UN),fN=findSheet(wb,SH_FBA),rN=findSheet(wb,SH_RPT);
+  // PO sheet: try name candidates, then content-sniff (look for sheet with ASIN + Status + Qty headers)
+  let ltN = null;
+  for(const candidate of SH_LT_CANDIDATES){
+    const found = findSheet(wb, candidate);
+    if(found && found !== sN && found !== uN && found !== fN && found !== rN){ ltN = found; break; }
+  }
+  if(!ltN){
+    // Content sniff: find sheet that has 'asin' AND 'status' AND ('qty' or 'po') in first row
+    for(const shName of wb.SheetNames){
+      if([sN,uN,fN,rN].includes(shName)) continue;
+      const ws = wb.Sheets[shName];
+      if(!ws||!ws['!ref']) continue;
+      const range = XLSX.utils.decode_range(ws['!ref']);
+      const hdrs = [];
+      for(let c=range.s.c;c<=range.e.c;c++){
+        const cell = ws[XLSX.utils.encode_cell({r:range.s.r,c})];
+        if(cell) hdrs.push(String(cell.v||'').toLowerCase());
+      }
+      const hasAsin = hdrs.some(h=>h.includes('asin'));
+      const hasStatus = hdrs.some(h=>h.includes('status'));
+      const hasQty = hdrs.some(h=>h.includes('qty')||h.includes('quantity')||h.includes('po'));
+      if(hasAsin && hasStatus && hasQty){ ltN = shName; break; }
+    }
+  }
   if(!sN)throw new Error(`Sheet "${SH_SELL}" not found. Available: ${wb.SheetNames.join(', ')}`);
   if(!uN)throw new Error(`Sheet "${SH_UN}" not found. Available: ${wb.SheetNames.join(', ')}`);
   if(!fN)throw new Error(`Sheet "${SH_FBA}" not found. Available: ${wb.SheetNames.join(', ')}`);
-  dbg('Mapped →',sN,'|',uN,'|',fN,'| report:',(rN||'NOT FOUND'));
+  dbg('Mapped →',sN,'|',uN,'|',fN,'| report:',(rN||'NOT FOUND'),'| PO sheet:',(ltN||'NOT FOUND'));
   const sell=sheetToRows(wb.Sheets[sN]);
   const unsell=sheetToRows(wb.Sheets[uN]);
   const fba=sheetToRows(wb.Sheets[fN]);
   const rpt=rN?sheetToRows(wb.Sheets[rN]):[];
-  dbg('Rows → sell:',sell.length,'unsell:',unsell.length,'fba:',fba.length,'rpt:',rpt.length);
-  return{sell,unsell,fba,rpt};
+  const lt=ltN?sheetToRows(wb.Sheets[ltN]):[];
+  dbg('Rows → sell:',sell.length,'unsell:',unsell.length,'fba:',fba.length,'rpt:',rpt.length,'leadtime:',lt.length);
+  return{sell,unsell,fba,rpt,lt};
 }
 
 // ══════════════════════════════════════════
@@ -706,6 +766,53 @@ function detectCol(headers,patterns){
     if(i!==-1)return headers[i];
   }
   return null;
+}
+
+// ══════════════════════════════════════════
+// BUILD PO MAP from PO/Leadtime sheet
+// Cols: PO No, Date, Supplier, SKU, Qty, ASIN, Status, Date of Completion, Date of Delivery
+// Skip rows where Status === 'Delivered'
+// ══════════════════════════════════════════
+function fmtExcelDate(v){
+  if(!v && v!==0) return '';
+  // XLSX may parse dates as JS Date objects or as Excel serial numbers
+  if(v instanceof Date){
+    return v.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  }
+  // Excel serial number
+  if(typeof v === 'number' && v > 40000){
+    const d = new Date(Math.round((v - 25569)*86400*1000));
+    return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  }
+  return String(v);
+}
+
+function buildPoMap(lt){
+  const byAsin = new Map();
+  if(!lt.length){ dbg('PO sheet: empty'); return byAsin; }
+
+  const lh = Object.keys(lt[0]);
+  const asinCol   = detectCol(lh, ['asin']);
+  const qtyCol    = detectCol(lh, ['qty','quantity','units','poqty','po qty']);
+  const statusCol = detectCol(lh, ['status','postatus','po status','shipment status','shipmentstatus']);
+  const delCol    = detectCol(lh, ['date of delivery','dateofdelivery','delivery date','deliverydate','del date','deldate','date delivery']);
+  dbg('PO cols → asin:',asinCol,'qty:',qtyCol,'status:',statusCol,'del:',delCol,'all headers:',lh.join(' | '));
+
+  if(!asinCol){ dbg('WARNING: ASIN col not found in PO sheet. Headers:',lh.join(', ')); return byAsin; }
+
+  for(const row of lt){
+    const asin = norm(row[asinCol]);
+    if(!asin || asin==='ASIN') continue;
+    const status = str(row[statusCol]||'').trim();
+    if(status.toLowerCase()==='delivered') continue; // already in FC sellable
+    const qty = toNum(row[qtyCol]);
+    if(!qty) continue;
+    const del_date = delCol ? fmtExcelDate(row[delCol]) : '';
+    if(!byAsin.has(asin)) byAsin.set(asin, []);
+    byAsin.get(asin).push({qty, status, del_date});
+  }
+  dbg('PO map entries:',byAsin.size);
+  return byAsin;
 }
 
 // ══════════════════════════════════════════
@@ -757,10 +864,12 @@ function buildInboundMap(rpt){
 // ══════════════════════════════════════════
 // MERGE
 // ══════════════════════════════════════════
-function mergeData(sell,unsell,fba,rpt){
+function mergeData(sell,unsell,fba,rpt,lt){
   step('Merging by ASIN…');
 
   const {bySkuMap, byAsinMap} = buildInboundMap(rpt);
+  const poMap = buildPoMap(lt||[]);
+  poMapGlobal = poMap;
 
   const sh=sell.length?Object.keys(sell[0]):[];
   const sc={
@@ -866,8 +975,12 @@ function mergeData(sell,unsell,fba,rpt){
     const inbound    = resolveInbound(sku, asin);
     const unit_cost  = COST_MAP[asin]||0;
     const total_cost = unit_cost * total;
+    const poEntries  = poMap.get(asin)||[];
+    const po_qty     = poEntries.reduce((s,e)=>s+e.qty,0);
+    const po_status  = poEntries.length ? [...new Set(poEntries.map(e=>e.status))].filter(Boolean).join(', ') : '';
+    const po_del_date= poEntries.length ? [...new Set(poEntries.map(e=>e.del_date))].filter(Boolean).join(', ') : '';
     const issues     = buildIssues({hasFCMatch,isFCOnly:false,fcSell,fbaAvail,fcUnsell,fbaUnsell,total});
-    merged.push({sku,asin,fc_sellable:hasFCMatch?fcSell:0,fc_unsellable:hasFCMatch?fcUnsell:0,fba_available:fbaAvail,fba_unsellable:fbaUnsell,inbound,total,unit_cost,total_cost,hasFCMatch,source:'fba',issues,issue_count:issues.length});
+    merged.push({sku,asin,fc_sellable:hasFCMatch?fcSell:0,fc_unsellable:hasFCMatch?fcUnsell:0,fba_available:fbaAvail,fba_unsellable:fbaUnsell,inbound,total,po_qty,po_status,po_del_date,unit_cost,total_cost,hasFCMatch,source:'fba',issues,issue_count:issues.length});
   }
 
   const allFCAsins=new Set([...sellMap.keys(),...unMap.keys()]);
@@ -882,8 +995,12 @@ function mergeData(sell,unsell,fba,rpt){
     const inbound  = resolveInbound(sku, asin);
     const unit_cost  = COST_MAP[asin]||0;
     const total_cost = unit_cost * total;
+    const poEntries  = poMap.get(asin)||[];
+    const po_qty     = poEntries.reduce((s,e)=>s+e.qty,0);
+    const po_status  = poEntries.length ? [...new Set(poEntries.map(e=>e.status))].filter(Boolean).join(', ') : '';
+    const po_del_date= poEntries.length ? [...new Set(poEntries.map(e=>e.del_date))].filter(Boolean).join(', ') : '';
     const issues   = buildIssues({hasFCMatch:true,isFCOnly:true,fcSell,fbaAvail:0,fcUnsell,fbaUnsell:0,total});
-    merged.push({sku,asin,fc_sellable:fcSell,fc_unsellable:fcUnsell,fba_available:0,fba_unsellable:0,inbound,total,unit_cost,total_cost,hasFCMatch:true,source:'fc',issues,issue_count:issues.length});
+    merged.push({sku,asin,fc_sellable:fcSell,fc_unsellable:fcUnsell,fba_available:0,fba_unsellable:0,inbound,total,po_qty,po_status,po_del_date,unit_cost,total_cost,hasFCMatch:true,source:'fc',issues,issue_count:issues.length});
   }
 
   dbg('Merged (after blocklist):',merged.length);
@@ -930,6 +1047,17 @@ function renderKPIs(rows){
   const totalCost = rows.reduce((s,r)=>s+r.total_cost,0);
   set('k6', fmtCur(totalCost));
   $('k6').title = fmtCurFull(totalCost);
+  // PO KPIs — sum from poMapGlobal (all active entries, not deduplicated by ASIN)
+  let inTransit=0, inProd=0;
+  for(const entries of poMapGlobal.values()){
+    for(const e of entries){
+      const s=e.status.toLowerCase();
+      if(s==='in transit') inTransit+=e.qty;
+      else if(s==='in production') inProd+=e.qty;
+    }
+  }
+  set('k8', inTransit.toLocaleString());
+  set('k9', inProd.toLocaleString());
 }
 
 // ══════════════════════════════════════════
@@ -1049,6 +1177,113 @@ function renderCharts(rows){
 }
 
 // ══════════════════════════════════════════
+// PO CHARTS
+// ══════════════════════════════════════════
+function renderPoCharts(rows){
+  // Collect active PO entries per SKU name from rows that have po_qty > 0
+  const poRows = rows.filter(r=>r.po_qty>0);
+  // Group by status for donut
+  const statusTotals = {};
+  for(const entries of poMapGlobal.values()){
+    for(const e of entries){
+      const s = e.status || 'Unknown';
+      statusTotals[s] = (statusTotals[s]||0) + e.qty;
+    }
+  }
+  const totalActive = Object.values(statusTotals).reduce((s,v)=>s+v,0);
+  set('dpototal', totalActive.toLocaleString());
+
+  // Bar chart — top PO rows by qty, colored by dominant status
+  const sortedPo = [...poRows].sort((a,b)=>b.po_qty-a.po_qty).slice(0,12);
+  const poLabels = sortedPo.map(r=>{const s=str(r.sku);return s.length>16?s.slice(0,15)+'…':s;});
+  const transitColor  = 'rgba(56,189,248,0.8)';
+  const productColor  = 'rgba(245,158,11,0.8)';
+
+  // Per-bar colors based on status
+  const barColors = sortedPo.map(r=>{
+    const s = r.po_status.toLowerCase();
+    if(s.includes('in transit')) return transitColor;
+    if(s.includes('in production')) return productColor;
+    return 'rgba(167,139,250,0.8)';
+  });
+
+  if(poBarChart)poBarChart.destroy();
+  const poBarCtx = $('cpobar');
+  if(!poBarCtx){ return; }
+
+  if(!sortedPo.length){
+    if(poBarChart)poBarChart.destroy();
+    poBarChart=null;
+    const ctx=poBarCtx.getContext('2d');
+    ctx.clearRect(0,0,poBarCtx.width,poBarCtx.height);
+    $('po-charts-row').style.display='none';
+    return;
+  }
+
+  $('po-charts-row').style.display='';
+  poBarChart=new Chart(poBarCtx.getContext('2d'),{
+    type:'bar',
+    data:{labels:poLabels,datasets:[{
+      label:'PO Qty',
+      data:sortedPo.map(r=>r.po_qty),
+      backgroundColor:barColors,
+      borderColor:sortedPo.map(r=>{
+        const s=r.po_status.toLowerCase();
+        if(s.includes('in transit')) return '#38bdf8';
+        if(s.includes('in production')) return '#f59e0b';
+        return '#a78bfa';
+      }),
+      borderWidth:1,borderRadius:4,borderSkipped:false
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'#0a0b10',borderColor:'#2a2d3e',borderWidth:1,titleColor:'#e8eaf6',bodyColor:'#9395a5',padding:10,
+          callbacks:{
+            title:items=>sortedPo[items[0].dataIndex].sku,
+            label:items=>`${items.raw.toLocaleString()} units — ${sortedPo[items.dataIndex].po_status}`
+          }
+        },
+      },
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#5f6170',font:{size:10,family:'IBM Plex Mono'},maxRotation:35}},
+        y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#5f6170',font:{size:10,family:'IBM Plex Mono'}}},
+      }
+    }
+  });
+
+  // Donut
+  const statusKeys = Object.keys(statusTotals);
+  const donutColors=['#38bdf8','#f59e0b','#a78bfa','#22c55e','#ef4444'];
+  if(poDonutChart)poDonutChart.destroy();
+  const hasPoData = totalActive > 0;
+  poDonutChart=new Chart($('cpodonut').getContext('2d'),{
+    type:'doughnut',
+    data:{
+      labels:hasPoData?statusKeys:['No Active POs'],
+      datasets:[{
+        data:hasPoData?statusKeys.map(k=>statusTotals[k]):[1],
+        backgroundColor:hasPoData?donutColors.slice(0,statusKeys.length):['rgba(60,63,90,0.4)'],
+        borderColor:'#1e2130',borderWidth:2,hoverOffset:6
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{
+      legend:{display:false},
+      tooltip:{enabled:hasPoData,backgroundColor:'#0a0b10',borderColor:'#2a2d3e',borderWidth:1,titleColor:'#e8eaf6',bodyColor:'#9395a5',padding:10,
+        callbacks:{label:ctx=>`${ctx.raw.toLocaleString()} units (${totalActive>0?Math.round(ctx.raw/totalActive*100):0}%)`}
+      }
+    }}
+  });
+  const leg=$('podonutlegend');
+  leg.innerHTML = statusKeys.map((k,i)=>`
+    <div class="dl-item">
+      <div class="dl-sw" style="background:${donutColors[i]}"></div>
+      <span style="font-size:.68rem;color:var(--text2);">${k} — ${statusTotals[k].toLocaleString()}</span>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════
 // TABLE
 // ══════════════════════════════════════════
 function renderTable(rows){
@@ -1056,7 +1291,7 @@ function renderTable(rows){
   set('rbadge',`${rows.length.toLocaleString()} rows`);
   set('tfc',`Showing ${rows.length.toLocaleString()} of ${allRows.length.toLocaleString()} entries`);
   if(!rows.length){
-    tbody.innerHTML=`<tr><td colspan="11"><div class="empty"><div class="ei">📦</div><p>No rows match the current filter.</p></div></td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="14"><div class="empty"><div class="ei">📦</div><p>No rows match the current filter.</p></div></td></tr>`;
     return;
   }
   tbody.innerHTML=rows.map(r=>{
@@ -1068,6 +1303,15 @@ function renderTable(rows){
       ? `<td class="td-cost">${fmtCurFull(r.total_cost)}</td>`
       : `<td class="td-cost z">—</td>`;
     const inboundClass = r.inbound > 0 ? 'n ib compact' : 'n ib z compact';
+    const poQtyHtml = r.po_qty > 0
+      ? `<td class="n compact" style="color:#38bdf8;">${r.po_qty.toLocaleString()}</td>`
+      : `<td class="n compact z">—</td>`;
+    const poStatusHtml = r.po_status
+      ? `<td style="font-size:.68rem;white-space:nowrap;padding:6px 8px;"><span style="padding:2px 7px;border-radius:5px;font-weight:700;font-size:.61rem;${r.po_status.toLowerCase().includes('in transit')?'background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.3);color:#38bdf8':r.po_status.toLowerCase().includes('in production')?'background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);color:#f59e0b':'background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);color:#a78bfa'}">${esc(r.po_status)}</span></td>`
+      : `<td class="n z compact">—</td>`;
+    const poDelHtml = r.po_del_date
+      ? `<td style="font-family:'IBM Plex Mono',monospace;font-size:.68rem;color:#5eead4;white-space:nowrap;">${esc(r.po_del_date)}</td>`
+      : `<td class="n z compact">—</td>`;
     return `<tr>
       <td class="td-sku" title="${esc(r.sku)}">${esc(r.sku)}</td>
       <td class="td-asin">${esc(r.asin)}</td>
@@ -1077,6 +1321,9 @@ function renderTable(rows){
       <td class="n compact ${r.fba_unsellable>0?'w':'z'}">${r.fba_unsellable.toLocaleString()}</td>
       <td class="${inboundClass}">${r.inbound > 0 ? r.inbound.toLocaleString() : '—'}</td>
       <td class="${tc} compact">${r.total.toLocaleString()}</td>
+      ${poQtyHtml}
+      ${poStatusHtml}
+      ${poDelHtml}
       ${unitCostHtml}
       ${totalCostHtml}
       <td class="td-st">${badgeHtml(r)}</td>
@@ -1153,11 +1400,12 @@ async function boot(){
   const t0=performance.now();
   try{
     const ab=await fetchData();
-    const{sell,unsell,fba,rpt}=parseSheets(ab);
-    allRows=mergeData(sell,unsell,fba,rpt);
+    const{sell,unsell,fba,rpt,lt}=parseSheets(ab);
+    allRows=mergeData(sell,unsell,fba,rpt,lt);
     filteredRows=[...allRows];
     renderKPIs(allRows);
     renderCharts(allRows);
+    renderPoCharts(allRows);
     applyFilters();
 
     const dp=$('dbg');
