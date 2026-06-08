@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>Purchase Orders Dashboard</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+:root{
+--bg:#0f1117;
+--bg2:#161820;
+--card:#1e2130;
+--border:#2a2d3e;
+--text:#e8eaf6;
+--text2:#9395a5;
+--green:#22c55e;
+--orange:#f59e0b;
+--blue:#38bdf8;
+--red:#ef4444;
+--purple:#a78bfa;
+}
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+}
+
+body{
+background:var(--bg);
+color:var(--text);
+font-family:Arial,sans-serif;
+padding:20px;
+}
+
+.header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:20px;
+}
+
+.title{
+font-size:24px;
+font-weight:700;
+}
+
+.live{
+background:#1a2f20;
+color:#4ade80;
+padding:8px 15px;
+border-radius:20px;
+font-size:13px;
+}
+
+.kpis{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+gap:15px;
+margin-bottom:20px;
+}
+
+.card{
+background:var(--card);
+border:1px solid var(--border);
+border-radius:12px;
+padding:18px;
+}
+
+.card h4{
+font-size:12px;
+text-transform:uppercase;
+color:var(--text2);
+margin-bottom:10px;
+}
+
+.card h2{
+font-size:28px;
+}
+
+.charts{
+display:grid;
+grid-template-columns:2fr 1fr;
+gap:20px;
+margin-bottom:20px;
+}
+
+.chart-card{
+background:var(--card);
+border:1px solid var(--border);
+border-radius:12px;
+padding:20px;
+}
+
+.chart-title{
+font-size:14px;
+margin-bottom:15px;
+font-weight:600;
+}
+
+.search{
+width:100%;
+max-width:350px;
+background:var(--bg2);
+border:1px solid var(--border);
+color:white;
+padding:12px;
+border-radius:8px;
+margin-bottom:15px;
+}
+
+.table-wrap{
+background:var(--card);
+border:1px solid var(--border);
+border-radius:12px;
+overflow:auto;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+}
+
+th{
+background:var(--bg2);
+padding:12px;
+text-align:left;
+font-size:12px;
+color:var(--text2);
+cursor:pointer;
+position:sticky;
+top:0;
+}
+
+td{
+padding:12px;
+border-bottom:1px solid var(--border);
+font-size:14px;
+}
+
+tr:hover{
+background:#25283b;
+}
+
+.badge{
+padding:4px 10px;
+border-radius:20px;
+font-size:12px;
+font-weight:600;
+}
+
+.production{
+background:rgba(245,158,11,.15);
+color:#fbbf24;
+}
+
+.transit{
+background:rgba(56,189,248,.15);
+color:#38bdf8;
+}
+
+.delivered{
+background:rgba(34,197,94,.15);
+color:#4ade80;
+}
+
+@media(max-width:900px){
+.charts{
+grid-template-columns:1fr;
+}
+}
+
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <div class="title">Purchase Orders Dashboard</div>
+        <div id="sheetNameDisplay"
+             style="font-size:12px;color:#94a3b8;margin-top:4px;">
+            Loading sheet...
+        </div>
+    </div>
+
+    <div class="live">● LIVE</div>
+</div>
+
+<div class="kpis">
+
+<div class="card">
+<h4>Total PO Units</h4>
+<h2 id="totalUnits">0</h2>
+</div>
+
+<div class="card">
+<h4>In Production</h4>
+<h2 id="productionUnits">0</h2>
+</div>
+
+<div class="card">
+<h4>In Transit</h4>
+<h2 id="transitUnits">0</h2>
+</div>
+
+<div class="card">
+<h4>Delivered</h4>
+<h2 id="deliveredUnits">0</h2>
+</div>
+
+<div class="card">
+<h4>Active POs</h4>
+<h2 id="activePOs">0</h2>
+</div>
+
+</div>
+
+<div class="charts">
+
+<div class="chart-card">
+<div class="chart-title">Incoming Inventory Timeline</div>
+<canvas id="deliveryChart"></canvas>
+</div>
+
+<div class="chart-card">
+<div class="chart-title">PO Status Breakdown</div>
+<canvas id="statusChart"></canvas>
+</div>
+
+</div>
+
+<input
+class="search"
+placeholder="Search PO / SKU / ASIN"
+onkeyup="filterRows(this.value)"
+>
+
+<div class="table-wrap">
+
+<table>
+
+<thead>
+
+<tr>
+
+<th onclick="sortTable('PO No')">PO No</th>
+<th onclick="sortTable('Date')">Date</th>
+<th onclick="sortTable('Supplier')">Supplier</th>
+<th onclick="sortTable('SKU')">SKU</th>
+<th onclick="sortTable('Qty')">Qty</th>
+<th onclick="sortTable('ASIN')">ASIN</th>
+<th onclick="sortTable('Status')">Status</th>
+<th onclick="sortTable('Date of Completion')">Completion</th>
+<th onclick="sortTable('Date of Delivery')">Delivery</th>
+
+</tr>
+
+</thead>
+
+<tbody id="tbody"></tbody>
+
+</table>
+
+</div>
+
+<script>
+
+const SHEET_URL =
+"https://docs.google.com/spreadsheets/d/1jZv_Qqeg2RWXssYroxyS3_fCW_D09Nqhbf6Px9s6pR4/export?format=xlsx";
+
+let rowsData = [];
+
+let deliveryChart;
+let statusChart;
+
+
+function renderKPIs(rows){
+
+let total=0;
+let prod=0;
+let transit=0;
+let delivered=0;
+
+rows.forEach(r=>{
+
+let qty = Number(r.Qty)||0;
+
+total += qty;
+
+let status = String(r.Status||"").toLowerCase();
+
+if(status.includes("production")) prod += qty;
+if(status.includes("transit")) transit += qty;
+if(status.includes("delivered")) delivered += qty;
+
+});
+
+document.getElementById("totalUnits").innerText = total.toLocaleString();
+document.getElementById("productionUnits").innerText = prod.toLocaleString();
+document.getElementById("transitUnits").innerText = transit.toLocaleString();
+document.getElementById("deliveredUnits").innerText = delivered.toLocaleString();
+
+document.getElementById("activePOs").innerText =
+rows.filter(r =>
+!String(r.Status||"").toLowerCase().includes("delivered")
+).length;
+
+}
+
+function renderCharts(rows){
+
+const deliveryMap = {};
+const statusMap = {};
+
+rows.forEach(r=>{
+
+const delivery = r["Date of Delivery"];
+
+if(delivery){
+deliveryMap[delivery] =
+(deliveryMap[delivery]||0)+(Number(r.Qty)||0);
+}
+
+const status = r.Status || "Unknown";
+
+statusMap[status] = (statusMap[status]||0)+1;
+
+});
+
+if(deliveryChart) deliveryChart.destroy();
+
+deliveryChart = new Chart(
+document.getElementById("deliveryChart"),
+{
+type:"bar",
+data:{
+labels:Object.keys(deliveryMap),
+datasets:[{
+label:"Units Arriving",
+data:Object.values(deliveryMap)
+}]
+}
+}
+);
+
+if(statusChart) statusChart.destroy();
+
+statusChart = new Chart(
+document.getElementById("statusChart"),
+{
+type:"doughnut",
+data:{
+labels:Object.keys(statusMap),
+datasets:[{
+data:Object.values(statusMap)
+}]
+}
+}
+);
+
+}
+
+function renderTable(rows){
+
+const tbody = document.getElementById("tbody");
+
+tbody.innerHTML = rows.map(r=>{
+
+let cls="";
+
+const status = String(r.Status||"");
+
+if(status.includes("Production")) cls="production";
+else if(status.includes("Transit")) cls="transit";
+else if(status.includes("Delivered")) cls="delivered";
+
+return `
+<tr>
+<td>${r["PO No"]||""}</td>
+<td>${r.Date||""}</td>
+<td>${r.Supplier||""}</td>
+<td>${r.SKU||""}</td>
+<td>${r.Qty||""}</td>
+<td>${r.ASIN||""}</td>
+<td><span class="badge ${cls}">${status}</span></td>
+<td>${r["Date of Completion"]||""}</td>
+<td>${r["Date of Delivery"]||""}</td>
+</tr>
+`;
+
+}).join("");
+
+}
+
+function filterRows(search){
+
+search = search.toLowerCase();
+
+const filtered = rowsData.filter(r =>
+JSON.stringify(r).toLowerCase().includes(search)
+);
+
+renderTable(filtered);
+
+}
+
+let sortDirection = 1;
+
+function sortTable(column){
+
+rowsData.sort((a,b)=>{
+
+const x = a[column] || "";
+const y = b[column] || "";
+
+if(x>y) return sortDirection;
+if(x<y) return -sortDirection;
+
+return 0;
+
+});
+
+sortDirection *= -1;
+
+renderTable(rowsData);
+
+}
+
+
+
+const SH_LT_CANDIDATES = [
+    "Leadtime",
+    "Lead Time",
+    "Lead time",
+    "leadtime",
+    "PO",
+    "Purchase Orders"
+];
+
+async function loadData(){
+
+    const response = await fetch(
+        "https://docs.google.com/spreadsheets/d/1jZv_Qqeg2RWXssYroxyS3_fCW_D09Nqhbf6Px9s6pR4/export?format=xlsx"
+    );
+
+    const buffer = await response.arrayBuffer();
+
+    const workbook = XLSX.read(buffer,{type:"array"});
+
+    let sheetName =
+        SH_LT_CANDIDATES.find(name => workbook.Sheets[name]);
+
+    if(!sheetName){
+        alert(
+            "Leadtime / Purchase Order sheet not found.\n\nExpected one of:\n" +
+            SH_LT_CANDIDATES.join(", ")
+        );
+        return;
+    }
+
+    console.log("Using sheet:", sheetName);
+
+    const sheet = workbook.Sheets[sheetName];
+
+    rowsData = XLSX.utils.sheet_to_json(sheet,{
+        defval:""
+    });
+
+    renderKPIs(rowsData);
+    renderCharts(rowsData);
+    renderTable(rowsData);
+</script>
+
+</body>
+</html>
