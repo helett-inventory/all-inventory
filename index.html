@@ -92,7 +92,6 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 /* CHARTS ROW */
 .charts-row{display:grid;grid-template-columns:1fr 340px;gap:16px;margin-bottom:16px;}
 @media(max-width:900px){.charts-row{grid-template-columns:1fr;}}
-/* COST CHARTS ROW */
 .cost-charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px;}
 @media(max-width:900px){.cost-charts-row{grid-template-columns:1fr;}}
 .chart-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 22px;}
@@ -177,9 +176,14 @@ td:last-child{border-right:none;}
 .n.z{color:var(--text3);}
 .n.g{color:var(--green);}
 .n.w{color:var(--orange);}
-/* Inbound column styling — pink accent */
 .n.ib{color:#f9a8d4;}
 .n.ib.z{color:var(--text3);}
+/* FC Transfer column — teal accent */
+.n.fct{color:#5eead4;}
+.n.fct.z{color:var(--text3);}
+/* On Hand column — purple accent */
+.n.onh{color:#c4b5fd;}
+.n.onh.z{color:var(--text3);}
 .ntot{font-family:'IBM Plex Mono',monospace;font-weight:700;text-align:right;color:#4ade80;background:rgba(34,197,94,.05);}
 .ntot.low{color:var(--orange);background:rgba(245,158,11,.06);}
 .td-cost{font-family:'IBM Plex Mono',monospace;font-weight:600;text-align:right;color:#5eead4;}
@@ -239,27 +243,26 @@ td:last-child{border-right:none;}
 
   <!-- KPIs -->
   <div class="kpi-grid">
-    <div class="kpi ci"><div class="kpi-lbl">Total Sellable</div><div class="kpi-val" id="k0">—</div><div class="kpi-sub">FC + FBA combined</div></div>
+    <div class="kpi ci"><div class="kpi-lbl">Total Sellable</div><div class="kpi-val" id="k0">—</div><div class="kpi-sub">FC + On Hand</div></div>
     <div class="kpi cg"><div class="kpi-lbl">FC Sellable</div><div class="kpi-val" id="k1">—</div><div class="kpi-sub">Warehouse stock</div></div>
-    <div class="kpi cb"><div class="kpi-lbl">FBA Available</div><div class="kpi-val" id="k2">—</div><div class="kpi-sub">Amazon fulfillable</div></div>
-    <div class="kpi cm"><div class="kpi-lbl">Total Inbound</div><div class="kpi-val" id="k7">—</div><div class="kpi-sub">Units in transit to FBA</div></div>
+    <div class="kpi cb"><div class="kpi-lbl">FBA Available</div><div class="kpi-val" id="k2">—</div><div class="kpi-sub">Amz_fulfilled_inv sellable</div></div>
+    <div class="kpi cp" style="--after-color:#c4b5fd;"><div class="kpi-lbl">On Hand</div><div class="kpi-val" id="k_onhand" style="color:#c4b5fd;">—</div><div class="kpi-sub">FBA Avail + FC Transfer</div></div>
+    <div class="kpi ct"><div class="kpi-lbl">FC Transfer</div><div class="kpi-val" id="k_fct" style="color:#5eead4;">—</div><div class="kpi-sub">Reserved FC-transfers</div></div>
     <div class="kpi cp"><div class="kpi-lbl">Total Unsellable</div><div class="kpi-val" id="k3">—</div><div class="kpi-sub">FC + FBA unsellable</div></div>
     <div class="kpi co"><div class="kpi-lbl">Low Stock SKUs</div><div class="kpi-val" id="k4">—</div><div class="kpi-sub">Total sellable &lt; 50</div></div>
     <div class="kpi cr"><div class="kpi-lbl">Flagged SKUs</div><div class="kpi-val" id="k5">—</div><div class="kpi-sub">Rows with any issue</div></div>
     <div class="kpi ct"><div class="kpi-lbl">Total Inventory Cost</div><div class="kpi-val" id="k6">—</div><div class="kpi-sub">Cost × total sellable</div></div>
-    <div class="kpi cb" style="--after-color:#38bdf8;"><div class="kpi-lbl">PO In Transit</div><div class="kpi-val" id="k8" style="color:#38bdf8;">—</div><div class="kpi-sub">Units shipping to FC</div></div>
-    <div class="kpi co"><div class="kpi-lbl">PO In Production</div><div class="kpi-val" id="k9" style="color:#fbbf24;">—</div><div class="kpi-sub">Units being manufactured</div></div>
   </div>
 
   <!-- Stock Charts -->
   <div class="charts-row">
     <div class="chart-card">
       <div class="chart-hd">
-        <div class="chart-title">Sellable Stock — FC vs FBA (Top 15)</div>
+        <div class="chart-title">Sellable Stock — FC vs On Hand (Top 15)</div>
         <div class="bar-legend">
           <div class="bl-item"><div class="bl-dot" style="background:#6366f1"></div>FC Sellable</div>
-          <div class="bl-item"><div class="bl-dot" style="background:#38bdf8"></div>FBA Available</div>
-          <div class="bl-item"><div class="bl-dot" style="background:#f472b6"></div>Inbound</div>
+          <div class="bl-item"><div class="bl-dot" style="background:#c4b5fd"></div>On Hand</div>
+          <div class="bl-item"><div class="bl-dot" style="background:#5eead4"></div>FC Transfer</div>
         </div>
       </div>
       <div class="bar-wrap"><canvas id="cbar"></canvas></div>
@@ -295,30 +298,6 @@ td:last-child{border-right:none;}
           <div class="donut-ctr"><div class="dc-val" style="font-size:1.1rem;" id="dctotal">—</div><div class="dc-lbl">Total Cost</div></div>
         </div>
         <div class="dl" id="costdonutlegend" style="max-width:280px;gap:8px 14px;"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- PO / Purchase Chart -->
-  <div class="cost-charts-row" style="grid-template-columns:2fr 1fr;" id="po-charts-row">
-    <div class="chart-card">
-      <div class="chart-hd">
-        <div class="chart-title">Purchase Orders — Units by SKU (Active Only)</div>
-        <div class="bar-legend">
-          <div class="bl-item"><div class="bl-dot" style="background:#38bdf8"></div>In Transit</div>
-          <div class="bl-item"><div class="bl-dot" style="background:#f59e0b"></div>In Production</div>
-        </div>
-      </div>
-      <div class="bar-wrap"><canvas id="cpobar"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <div class="chart-hd"><div class="chart-title">PO Status Breakdown</div></div>
-      <div class="donut-outer">
-        <div class="donut-ring" style="width:160px;height:160px;">
-          <canvas id="cpodonut" width="160" height="160"></canvas>
-          <div class="donut-ctr"><div class="dc-val" id="dpototal" style="font-size:1.3rem;">—</div><div class="dc-lbl">Active Units</div></div>
-        </div>
-        <div class="dl" id="podonutlegend" style="max-width:240px;gap:8px 14px;"></div>
       </div>
     </div>
   </div>
@@ -363,10 +342,9 @@ td:last-child{border-right:none;}
             <th class="nc compact" onclick="sortBy('fba_available')"><div class="thi">FBA Avail<span class="sarr" data-col="fba_available">↕</span></div></th>
             <th class="nc compact" onclick="sortBy('fba_unsellable')"><div class="thi">FBA Unsell<span class="sarr" data-col="fba_unsellable">↕</span></div></th>
             <th class="nc compact" onclick="sortBy('inbound')"><div class="thi">Inbound<span class="sarr" data-col="inbound">↕</span></div></th>
+            <th class="nc compact" onclick="sortBy('fc_transfer')"><div class="thi">FC Transfer<span class="sarr" data-col="fc_transfer">↕</span></div></th>
+            <th class="nc compact" onclick="sortBy('on_hand')"><div class="thi">On Hand<span class="sarr" data-col="on_hand">↕</span></div></th>
             <th class="nc compact" onclick="sortBy('total')"><div class="thi">Total<span class="sarr" data-col="total">↕</span></div></th>
-            <th class="nc compact" onclick="sortBy('po_qty')"><div class="thi">PO Qty<span class="sarr" data-col="po_qty">↕</span></div></th>
-            <th onclick="sortBy('po_status')"><div class="thi">PO Status<span class="sarr" data-col="po_status">↕</span></div></th>
-            <th onclick="sortBy('po_del_date')"><div class="thi">ETA<span class="sarr" data-col="po_del_date">↕</span></div></th>
             <th class="nc" onclick="sortBy('unit_cost')"><div class="thi">Unit Cost<span class="sarr" data-col="unit_cost">↕</span></div></th>
             <th class="nc" onclick="sortBy('total_cost')"><div class="thi">Total Cost<span class="sarr" data-col="total_cost">↕</span></div></th>
             <th onclick="sortBy('issue_count')"><div class="thi">Status<span class="sarr" data-col="issue_count">↕</span></div></th>
@@ -388,13 +366,23 @@ td:last-child{border-right:none;}
 // ══════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════
-const SHEET_URL="https://docs.google.com/spreadsheets/d/1jZv_Qqeg2RWXssYroxyS3_fCW_D09Nqhbf6Px9s6pR4/export?format=xlsx";
-const SH_SELL="Sellable_Inventory", SH_UN="Unsellable", SH_FBA="FBA_Inventory", SH_RPT="FBAInvReport";
-// PO sheet: try these names in order, then fall back to content-sniff
-const SH_LT_CANDIDATES = ["Leadtime","Lead Time","Lead time","leadtime","PO","Purchase Orders","Sheet1","Shipments"];
+// FBA workbook — Amz_fulfilled_inv, Manage_FBA_inv, Reserved_inv
+const SHEET_URL    = "https://docs.google.com/spreadsheets/d/1Va-jdWfO2dmO6R-QCnkg9S2YqIWacx9pKfkW3Th-RGw/export?format=xlsx";
+// FC workbook  — Sellable_Inventory, Unsellable
+const FC_SHEET_URL = "https://docs.google.com/spreadsheets/d/1jZv_Qqeg2RWXssYroxyS3_fCW_D09Nqhbf6Px9s6pR4/export?format=xlsx";
+
+// FC sheets
+const SH_SELL = "Sellable_Inventory";
+const SH_UN   = "Unsellable";
+
+// FBA sheets
+const SH_AMZ_FUL  = "Amz_fulfilled_inv";   // SELLABLE/UNSELLABLE condition rows
+const SH_MANAGE   = "Manage_FBA_inv";       // afn-fulfillable-quantity
+const SH_RESERVED = "Reserved_inv";         // reserved_fc-transfers
+const SH_FBA_INV  = "FBA_Inv";             // inbound-quantity
 
 // ══════════════════════════════════════════
-// ASIN BLOCKLIST — these ASINs are excluded from the dashboard entirely
+// ASIN BLOCKLIST
 // ══════════════════════════════════════════
 const ASIN_BLOCKLIST = new Set([
   "B0CN1153M4","B0F5Q4RV2R","B0BRXX6HMR","B0BYZVNPL4","B0C9CVWLL3",
@@ -475,7 +463,7 @@ const COST_MAP = {
 };
 
 // ══════════════════════════════════════════
-// SKU MATCH MAP  (seller SKU names, keyed by ASIN)
+// SKU MATCH MAP
 // ══════════════════════════════════════════
 const SKU_MAP = {
   "B0GPCQ9KLN": { "sellerSku": "Logic View Monitor HLT550", "finalName": "HLT550 Video Monitor" },
@@ -619,53 +607,51 @@ function resolveSkuName(asin, fallback) {
 // ══════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════
-let allRows=[],filteredRows=[];
-let sortCol=null,sortDir=-1;
+let allRows=[], filteredRows=[];
+let sortCol=null, sortDir=-1;
 let chips=new Set();
-let barChart=null,donutChart=null,costBarChart=null,costDonutChart=null,poBarChart=null,poDonutChart=null;
+let barChart=null, donutChart=null, costBarChart=null, costDonutChart=null;
 let dbgLog=[];
-let poMapGlobal=new Map();
 
 // ══════════════════════════════════════════
 // UTILS
 // ══════════════════════════════════════════
-const $=id=>document.getElementById(id);
-const set=(id,v)=>{const e=$(id);if(e)e.textContent=v;};
-const norm=v=>String(v??'').trim().toUpperCase();
-const str=v=>String(v??'').trim();
-const toNum=v=>{if(v===''||v==null)return 0;const n=parseFloat(String(v).replace(/,/g,''));return isNaN(n)?0:Math.round(n);};
-const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const fmtCur=v=>v>=1e6?'₹ '+(v/1e5).toFixed(1)+'L':v>=1000?'₹ '+(v/1000).toFixed(1)+'K':'₹ '+v.toFixed(0);
-const fmtCurFull=v=>'₹'+v.toLocaleString('en-IN',{maximumFractionDigits:2});
-function dbg(...a){const s=a.join(' ');dbgLog.push(s);console.log('[INV]',s);}
-function step(s){const e=$('lstep');if(e)e.textContent=s;}
+const $  = id => document.getElementById(id);
+const set = (id,v) => { const e=$(id); if(e) e.textContent=v; };
+const norm = v => String(v??'').trim().toUpperCase();
+const str  = v => String(v??'').trim();
+const toNum = v => { if(v===''||v==null) return 0; const n=parseFloat(String(v).replace(/,/g,'')); return isNaN(n)?0:Math.round(n); };
+const esc  = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmtCur = v => v>=1e6?'₹ '+(v/1e5).toFixed(1)+'L':v>=1000?'₹ '+(v/1000).toFixed(1)+'K':'₹ '+v.toFixed(0);
+const fmtCurFull = v => '₹'+v.toLocaleString('en-IN',{maximumFractionDigits:2});
+function dbg(...a){ const s=a.join(' '); dbgLog.push(s); console.log('[INV]',s); }
+function step(s){ const e=$('lstep'); if(e) e.textContent=s; }
 
 // ══════════════════════════════════════════
 // EXCEL DOWNLOAD
 // ══════════════════════════════════════════
 function downloadExcel(){
-  if(!filteredRows||!filteredRows.length){alert('No data to export.');return;}
+  if(!filteredRows||!filteredRows.length){ alert('No data to export.'); return; }
   const exportData = filteredRows.map(r => {
-    const flags = r.issues && r.issues.length ? r.issues.map(i => i.label).join(', ') : 'OK';
+    const flags = r.issues && r.issues.length ? r.issues.map(i=>i.label).join(', ') : 'OK';
     return {
-      'SKU':             r.sku,
-      'ASIN':            r.asin,
-      'FC Sellable':     r.fc_sellable,
-      'FC Unsellable':   r.fc_unsellable,
-      'FBA Available':   r.fba_available,
-      'FBA Unsellable':  r.fba_unsellable,
-      'Inbound':         r.inbound,
-      'Total Sellable':  r.total,
-      'PO Qty':          r.po_qty || '',
-      'PO Status':       r.po_status || '',
-      'Del Date':        r.po_del_date || '',
-      'Unit Cost (₹)':   r.unit_cost > 0 ? r.unit_cost : '',
-      'Total Cost (₹)':  r.total_cost > 0 ? r.total_cost : '',
-      'Status Flags':    flags
+      'SKU':              r.sku,
+      'ASIN':             r.asin,
+      'FC Sellable':      r.fc_sellable,
+      'FC Unsellable':    r.fc_unsellable,
+      'FBA Available':    r.fba_available,
+      'FBA Unsellable':   r.fba_unsellable,
+      'Inbound':          r.inbound,
+      'FC Transfer':      r.fc_transfer,
+      'On Hand':          r.on_hand,
+      'Total Sellable':   r.total,
+      'Unit Cost (₹)':    r.unit_cost > 0 ? r.unit_cost : '',
+      'Total Cost (₹)':   r.total_cost > 0 ? r.total_cost : '',
+      'Status Flags':     flags
     };
   });
   const ws = XLSX.utils.json_to_sheet(exportData);
-  ws['!cols'] = [{wch:40},{wch:16},{wch:12},{wch:14},{wch:13},{wch:14},{wch:10},{wch:10},{wch:10},{wch:16},{wch:14},{wch:14},{wch:16},{wch:35}];
+  ws['!cols'] = [{wch:40},{wch:16},{wch:12},{wch:14},{wch:13},{wch:14},{wch:13},{wch:10},{wch:14},{wch:14},{wch:16},{wch:35}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
   const today = new Date().toISOString().slice(0,10);
@@ -673,362 +659,426 @@ function downloadExcel(){
 }
 
 // ══════════════════════════════════════════
-// FETCH
+// FETCH — parallel
 // ══════════════════════════════════════════
-async function fetchData(){
-  step('Fetching spreadsheet…');
-  const r=await fetch(SHEET_URL);
-  if(!r.ok)throw new Error(`HTTP ${r.status} ${r.statusText}`);
-  const ab=await r.arrayBuffer();
-  dbg('Bytes:',ab.byteLength);
-  return ab;
+async function fetchBoth(){
+  step('Fetching spreadsheets (parallel)…');
+  const [rFba, rFc] = await Promise.all([
+    fetch(SHEET_URL),
+    fetch(FC_SHEET_URL)
+  ]);
+  if(!rFba.ok) throw new Error(`FBA sheet HTTP ${rFba.status} ${rFba.statusText}`);
+  if(!rFc.ok)  throw new Error(`FC sheet HTTP ${rFc.status} ${rFc.statusText}`);
+  const [abFba, abFc] = await Promise.all([rFba.arrayBuffer(), rFc.arrayBuffer()]);
+  dbg('FBA bytes:', abFba.byteLength, '| FC bytes:', abFc.byteLength);
+  return {abFba, abFc};
 }
 
 // ══════════════════════════════════════════
 // PARSE
 // ══════════════════════════════════════════
-function findSheet(wb,name){
-  const lo=name.toLowerCase().replace(/[^a-z0-9]/g,'');
-  return wb.SheetNames.find(s=>s.toLowerCase()===name.toLowerCase())
-      || wb.SheetNames.find(s=>s.toLowerCase().replace(/[^a-z0-9]/g,'')===lo)
-      || wb.SheetNames.find(s=>s.toLowerCase().replace(/[^a-z0-9]/g,'').includes(lo.slice(0,6)))
+function findSheet(wb, name){
+  const lo = name.toLowerCase().replace(/[^a-z0-9]/g,'');
+  return wb.SheetNames.find(s => s.toLowerCase() === name.toLowerCase())
+      || wb.SheetNames.find(s => s.toLowerCase().replace(/[^a-z0-9]/g,'') === lo)
+      || wb.SheetNames.find(s => s.toLowerCase().replace(/[^a-z0-9]/g,'').includes(lo.slice(0,6)))
       || null;
 }
 
 function sheetToRows(ws){
-  if(!ws||!ws['!ref'])return[];
-  const range=XLSX.utils.decode_range(ws['!ref']);
-  let hRow=range.s.r;
-  outer:for(let r=range.s.r;r<=Math.min(range.s.r+8,range.e.r);r++){
-    for(let c=range.s.c;c<=range.e.c;c++){
-      const cell=ws[XLSX.utils.encode_cell({r,c})];
-      if(cell&&String(cell.v||'').toLowerCase().match(/\basin\b|^sku$/)){hRow=r;break outer;}
+  if(!ws||!ws['!ref']) return [];
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  let hRow = range.s.r;
+  outer:for(let r=range.s.r; r<=Math.min(range.s.r+8,range.e.r); r++){
+    for(let c=range.s.c; c<=range.e.c; c++){
+      const cell = ws[XLSX.utils.encode_cell({r,c})];
+      if(cell && String(cell.v||'').toLowerCase().match(/\basin\b|^sku$/)){hRow=r; break outer;}
     }
   }
-  const ref=XLSX.utils.encode_range({s:{r:hRow,c:range.s.c},e:range.e});
-  const sub={...ws,'!ref':ref};
-  const rows=XLSX.utils.sheet_to_json(sub,{defval:''});
-  return rows.filter(row=>Object.values(row).some(v=>v!==''));
+  const ref = XLSX.utils.encode_range({s:{r:hRow,c:range.s.c},e:range.e});
+  const sub = {...ws,'!ref':ref};
+  const rows = XLSX.utils.sheet_to_json(sub,{defval:''});
+  return rows.filter(row => Object.values(row).some(v=>v!==''));
 }
 
-function parseSheets(ab){
-  step('Parsing…');
-  const wb=XLSX.read(ab,{type:'array',cellDates:true});
-  dbg('Sheets:',wb.SheetNames.join(', '));
-  const sN=findSheet(wb,SH_SELL),uN=findSheet(wb,SH_UN),fN=findSheet(wb,SH_FBA),rN=findSheet(wb,SH_RPT);
-  // PO sheet: try name candidates, then content-sniff (look for sheet with ASIN + Status + Qty headers)
-  let ltN = null;
-  for(const candidate of SH_LT_CANDIDATES){
-    const found = findSheet(wb, candidate);
-    if(found && found !== sN && found !== uN && found !== fN && found !== rN){ ltN = found; break; }
+// Unsellable sheet: wide format with date cols starting after ASIN col.
+// Row 1 = summary (JUNE / total etc), Row 2 = header (SKU | COST | TOTAL COST | ASIN | date…)
+// Strategy: find header row (has 'SKU' in col A), then scan rightmost col that has a date-like
+// header and at least one non-zero value → that is the latest date column.
+function parseUnsellable(ws){
+  if(!ws||!ws['!ref']) return new Map();
+  const range = XLSX.utils.decode_range(ws['!ref']);
+
+  // Find header row — look for row where col A cell = 'SKU'
+  let hRow = -1;
+  for(let r=range.s.r; r<=Math.min(range.s.r+10, range.e.r); r++){
+    const cell = ws[XLSX.utils.encode_cell({r, c:range.s.c})];
+    if(cell && String(cell.v||'').trim().toUpperCase() === 'SKU'){ hRow=r; break; }
   }
-  if(!ltN){
-    // Content sniff: find sheet that has 'asin' AND 'status' AND ('qty' or 'po') in first row
-    for(const shName of wb.SheetNames){
-      if([sN,uN,fN,rN].includes(shName)) continue;
-      const ws = wb.Sheets[shName];
-      if(!ws||!ws['!ref']) continue;
-      const range = XLSX.utils.decode_range(ws['!ref']);
-      const hdrs = [];
-      for(let c=range.s.c;c<=range.e.c;c++){
-        const cell = ws[XLSX.utils.encode_cell({r:range.s.r,c})];
-        if(cell) hdrs.push(String(cell.v||'').toLowerCase());
-      }
-      const hasAsin = hdrs.some(h=>h.includes('asin'));
-      const hasStatus = hdrs.some(h=>h.includes('status'));
-      const hasQty = hdrs.some(h=>h.includes('qty')||h.includes('quantity')||h.includes('po'));
-      if(hasAsin && hasStatus && hasQty){ ltN = shName; break; }
+  if(hRow === -1){ dbg('Unsellable: header row not found'); return new Map(); }
+
+  // Read header row to identify columns
+  const headers = [];
+  for(let c=range.s.c; c<=range.e.c; c++){
+    const cell = ws[XLSX.utils.encode_cell({r:hRow, c})];
+    headers.push({c, v: cell ? String(cell.v||'').trim() : ''});
+  }
+
+  // Find ASIN col
+  const asinHdr = headers.find(h => h.v.toUpperCase() === 'ASIN');
+  if(!asinHdr){ dbg('Unsellable: ASIN col not found'); return new Map(); }
+
+  // Date cols = all headers after ASIN col that look like dates (contain '-' or '/')
+  // or are non-empty after the ASIN position
+  const asinColIdx = asinHdr.c;
+  const dateCols = headers.filter(h => h.c > asinColIdx && h.v !== '');
+
+  dbg('Unsellable: hRow=', hRow, '| asinCol=', asinColIdx, '| dateCols count=', dateCols.length);
+
+  if(!dateCols.length){ dbg('Unsellable: no date cols found'); return new Map(); }
+
+  // Find rightmost date col that has at least one non-zero numeric value in data rows
+  let latestCol = null;
+  for(let i = dateCols.length - 1; i >= 0; i--){
+    const c = dateCols[i].c;
+    let hasData = false;
+    for(let r=hRow+1; r<=range.e.r; r++){
+      const cell = ws[XLSX.utils.encode_cell({r, c})];
+      if(cell && cell.v !== '' && cell.v !== null && parseFloat(cell.v) > 0){ hasData=true; break; }
     }
+    if(hasData){ latestCol = c; dbg('Unsellable: latest col idx=', c, 'header=', dateCols[i].v); break; }
   }
-  if(!sN)throw new Error(`Sheet "${SH_SELL}" not found. Available: ${wb.SheetNames.join(', ')}`);
-  if(!uN)throw new Error(`Sheet "${SH_UN}" not found. Available: ${wb.SheetNames.join(', ')}`);
-  if(!fN)throw new Error(`Sheet "${SH_FBA}" not found. Available: ${wb.SheetNames.join(', ')}`);
-  dbg('Mapped →',sN,'|',uN,'|',fN,'| report:',(rN||'NOT FOUND'),'| PO sheet:',(ltN||'NOT FOUND'));
-  const sell=sheetToRows(wb.Sheets[sN]);
-  const unsell=sheetToRows(wb.Sheets[uN]);
-  const fba=sheetToRows(wb.Sheets[fN]);
-  const rpt=rN?sheetToRows(wb.Sheets[rN]):[];
-  const lt=ltN?sheetToRows(wb.Sheets[ltN]):[];
-  dbg('Rows → sell:',sell.length,'unsell:',unsell.length,'fba:',fba.length,'rpt:',rpt.length,'leadtime:',lt.length);
-  return{sell,unsell,fba,rpt,lt};
+
+  if(latestCol === null){
+    // All zeros — still use rightmost col
+    latestCol = dateCols[dateCols.length-1].c;
+    dbg('Unsellable: all-zero cols, using rightmost=', latestCol);
+  }
+
+  // Build ASIN → qty map from latest date col
+  const unMap = new Map();
+  for(let r=hRow+1; r<=range.e.r; r++){
+    const asinCell = ws[XLSX.utils.encode_cell({r, c:asinColIdx})];
+    if(!asinCell || !asinCell.v) continue;
+    const asin = String(asinCell.v).trim().toUpperCase();
+    if(!asin || asin === 'ASIN' || ASIN_BLOCKLIST.has(asin)) continue;
+    const qtyCell = ws[XLSX.utils.encode_cell({r, c:latestCol})];
+    const qty = qtyCell ? toNum(qtyCell.v) : 0;
+    if(qty) unMap.set(asin, (unMap.get(asin)||0) + qty);
+  }
+
+  dbg('Unsellable map entries:', unMap.size);
+  return unMap;
+}
+
+function parseSheets(abFba, abFc){
+  step('Parsing…');
+
+  // FBA workbook
+  const wbFba = XLSX.read(abFba, {type:'array', cellDates:true});
+  dbg('FBA sheets:', wbFba.SheetNames.join(', '));
+
+  const aN   = findSheet(wbFba, SH_AMZ_FUL);
+  const mN   = findSheet(wbFba, SH_MANAGE);
+  const rsvN = findSheet(wbFba, SH_RESERVED);
+  const ibN  = findSheet(wbFba, SH_FBA_INV);
+
+  if(!aN)   throw new Error(`Sheet "${SH_AMZ_FUL}" not found in FBA workbook. Available: ${wbFba.SheetNames.join(', ')}`);
+  if(!mN)   throw new Error(`Sheet "${SH_MANAGE}" not found in FBA workbook. Available: ${wbFba.SheetNames.join(', ')}`);
+  if(!rsvN) throw new Error(`Sheet "${SH_RESERVED}" not found in FBA workbook. Available: ${wbFba.SheetNames.join(', ')}`);
+
+  const amzFul = sheetToRows(wbFba.Sheets[aN]);
+  const manage = sheetToRows(wbFba.Sheets[mN]);
+  const rsv    = sheetToRows(wbFba.Sheets[rsvN]);
+  const fbaInv = ibN ? sheetToRows(wbFba.Sheets[ibN]) : [];
+  if(!ibN) dbg('WARNING: Sheet "FBA_Inv" not found — inbound will be 0');
+
+  // FC workbook
+  const wbFc = XLSX.read(abFc, {type:'array', cellDates:true});
+  dbg('FC sheets:', wbFc.SheetNames.join(', '));
+
+  const sN = findSheet(wbFc, SH_SELL);
+  const uN = findSheet(wbFc, SH_UN);
+
+  if(!sN) throw new Error(`Sheet "${SH_SELL}" not found in FC workbook. Available: ${wbFc.SheetNames.join(', ')}`);
+  if(!uN) throw new Error(`Sheet "${SH_UN}" not found in FC workbook. Available: ${wbFc.SheetNames.join(', ')}`);
+
+  const sell  = sheetToRows(wbFc.Sheets[sN]);
+  // Unsellable uses custom parser for rightmost date col
+  const unMap = parseUnsellable(wbFc.Sheets[uN]);
+
+  dbg('Rows → amz_ful:', amzFul.length, '| manage:', manage.length, '| reserved:', rsv.length,
+      '| fba_inv:', fbaInv.length, '| sell:', sell.length, '| unsell map:', unMap.size);
+
+  return { sell, unMap, amzFul, manage, rsv, fbaInv };
 }
 
 // ══════════════════════════════════════════
 // COLUMN DETECTION
 // ══════════════════════════════════════════
-function detectCol(headers,patterns){
-  const lo=headers.map(h=>String(h).toLowerCase().replace(/[\s_\-]/g,''));
+function detectCol(headers, patterns){
+  const lo = headers.map(h => String(h).toLowerCase().replace(/[\s_\-]/g,''));
   for(const p of patterns){
-    const cp=p.replace(/[\s_\-]/g,'');
-    let i=lo.findIndex(h=>h===cp);
-    if(i!==-1)return headers[i];
-    i=lo.findIndex(h=>h.includes(cp));
-    if(i!==-1)return headers[i];
+    const cp = p.replace(/[\s_\-]/g,'');
+    let i = lo.findIndex(h => h === cp);
+    if(i !== -1) return headers[i];
+    i = lo.findIndex(h => h.includes(cp));
+    if(i !== -1) return headers[i];
   }
   return null;
 }
 
 // ══════════════════════════════════════════
-// BUILD PO MAP from PO/Leadtime sheet
-// Cols: PO No, Date, Supplier, SKU, Qty, ASIN, Status, Date of Completion, Date of Delivery
-// Skip rows where Status === 'Delivered'
+// BUILD MAPS FROM NEW SHEETS
 // ══════════════════════════════════════════
-function fmtExcelDate(v){
-  if(!v && v!==0) return '';
-  // XLSX may parse dates as JS Date objects or as Excel serial numbers
-  if(v instanceof Date){
-    return v.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+
+// Amz_fulfilled_inv → fbaAvailMap (SELLABLE) + fbaUnsellMap (UNSELLABLE)
+// Cols: seller-sku, fnsku, asin, condition-type, Warehouse-Condition-code, Quantity Available
+function buildAmzFulMaps(amzFul){
+  const fbaAvailMap  = new Map();
+  const fbaUnsellMap = new Map();
+  const fbaSkuMap    = new Map();
+
+  if(!amzFul.length){ dbg('Amz_fulfilled_inv: empty'); return {fbaAvailMap, fbaUnsellMap, fbaSkuMap}; }
+
+  const h = Object.keys(amzFul[0]);
+  const asinCol  = detectCol(h, ['asin']);
+  const skuCol   = detectCol(h, ['seller-sku','sellersku','sku']);
+  const condCol  = detectCol(h, ['warehouse-condition-code','warehouseconditioncode','warehouse-condition','conditioncode']);
+  const qtyCol   = detectCol(h, ['quantity available','quantityavailable','qty available','quantity','qty']);
+
+  dbg('Amz_fulfilled_inv cols → asin:', asinCol, 'sku:', skuCol, 'cond:', condCol, 'qty:', qtyCol);
+
+  if(!asinCol || !condCol || !qtyCol){
+    dbg('WARNING: missing required cols in Amz_fulfilled_inv. Headers:', h.join(', '));
+    return {fbaAvailMap, fbaUnsellMap, fbaSkuMap};
   }
-  // Excel serial number
-  if(typeof v === 'number' && v > 40000){
-    const d = new Date(Math.round((v - 25569)*86400*1000));
-    return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
-  }
-  return String(v);
-}
 
-function buildPoMap(lt){
-  const byAsin = new Map();
-  if(!lt.length){ dbg('PO sheet: empty'); return byAsin; }
-
-  const lh = Object.keys(lt[0]);
-  const asinCol   = detectCol(lh, ['asin']);
-  const qtyCol    = detectCol(lh, ['qty','quantity','units','poqty','po qty']);
-  const statusCol = detectCol(lh, ['status','postatus','po status','shipment status','shipmentstatus']);
-  const delCol    = detectCol(lh, ['date of delivery','dateofdelivery','delivery date','deliverydate','del date','deldate','date delivery']);
-  dbg('PO cols → asin:',asinCol,'qty:',qtyCol,'status:',statusCol,'del:',delCol,'all headers:',lh.join(' | '));
-
-  if(!asinCol){ dbg('WARNING: ASIN col not found in PO sheet. Headers:',lh.join(', ')); return byAsin; }
-
-  for(const row of lt){
+  for(const row of amzFul){
     const asin = norm(row[asinCol]);
-    if(!asin || asin==='ASIN') continue;
-    const status = str(row[statusCol]||'').trim();
-    if(status.toLowerCase()==='delivered') continue; // already in FC sellable
-    const qty = toNum(row[qtyCol]);
-    if(!qty) continue;
-    const del_date = delCol ? fmtExcelDate(row[delCol]) : '';
-    if(!byAsin.has(asin)) byAsin.set(asin, []);
-    byAsin.get(asin).push({qty, status, del_date});
+    if(!asin || asin === 'ASIN' || ASIN_BLOCKLIST.has(asin)) continue;
+    const sku  = str(row[skuCol] || '');
+    if(sku && !fbaSkuMap.has(asin)) fbaSkuMap.set(asin, sku);
+    const cond = norm(row[condCol]);
+    const qty  = toNum(row[qtyCol]);
+    if(cond === 'SELLABLE'){
+      fbaAvailMap.set(asin, (fbaAvailMap.get(asin)||0) + qty);
+    } else {
+      fbaUnsellMap.set(asin, (fbaUnsellMap.get(asin)||0) + qty);
+    }
   }
-  dbg('PO map entries:',byAsin.size);
-  return byAsin;
+
+  dbg('Amz_ful maps → avail:', fbaAvailMap.size, 'unsell:', fbaUnsellMap.size);
+  return {fbaAvailMap, fbaUnsellMap, fbaSkuMap};
 }
 
-// ══════════════════════════════════════════
-// BUILD INBOUND MAP from FBAInvReport
-// ══════════════════════════════════════════
-function buildInboundMap(rpt){
-  const bySkuMap  = new Map();
-  const byAsinMap = new Map();
+// Manage_FBA_inv → afnFulfillableMap (afn-fulfillable-quantity)
+function buildManageMap(manage){
+  const afnMap = new Map();
+  if(!manage.length){ dbg('Manage_FBA_inv: empty'); return afnMap; }
 
-  if(!rpt.length){
-    dbg('FBAInvReport: sheet empty or not found, inbound will be 0 for all SKUs');
-    return {bySkuMap, byAsinMap};
+  const h = Object.keys(manage[0]);
+  const asinCol = detectCol(h, ['asin']);
+  const qtyCol  = detectCol(h, ['afn-fulfillable-quantity','afnfulfillablequantity','afnfulfillable','fulfillable quantity','fulfillablequantity']);
+
+  dbg('Manage_FBA_inv cols → asin:', asinCol, 'afn-fulfillable:', qtyCol);
+
+  if(!asinCol || !qtyCol){
+    dbg('WARNING: missing cols in Manage_FBA_inv. Headers:', h.join(', '));
+    return afnMap;
   }
 
-  const rh = Object.keys(rpt[0]);
-  const rSkuCol  = detectCol(rh, ['seller-sku','sellersku','sku','msku','merchant-sku']);
-  const rAsinCol = detectCol(rh, ['asin']);
-  const rQtyCol  = detectCol(rh, ['inbound-quantity','inboundquantity','inbound quantity','inbound-qty','inboundqty','inbound']);
-
-  dbg('FBAInvReport cols → sku:',rSkuCol,'asin:',rAsinCol,'inbound-qty:',rQtyCol);
-
-  if(!rQtyCol){
-    dbg('WARNING: inbound-quantity column not found in FBAInvReport. Headers:',rh.join(', '));
-    return {bySkuMap, byAsinMap};
+  for(const row of manage){
+    const asin = norm(row[asinCol]);
+    if(!asin || asin === 'ASIN' || ASIN_BLOCKLIST.has(asin)) continue;
+    const qty = toNum(row[qtyCol]);
+    afnMap.set(asin, (afnMap.get(asin)||0) + qty);
   }
 
-  for(const row of rpt){
-    const qty = toNum(row[rQtyCol]);
-    if(!qty) continue;
+  dbg('Manage map entries:', afnMap.size);
+  return afnMap;
+}
 
-    if(rSkuCol){
-      const sku = norm(row[rSkuCol]);
-      if(sku && sku !== 'SELLER-SKU' && sku !== 'SKU'){
-        bySkuMap.set(sku, (bySkuMap.get(sku)||0) + qty);
-      }
-    }
-    if(rAsinCol){
-      const asin = norm(row[rAsinCol]);
-      if(asin && asin !== 'ASIN'){
-        byAsinMap.set(asin, (byAsinMap.get(asin)||0) + qty);
-      }
-    }
+// Reserved_inv → fcTransferMap (reserved_fc-transfers)
+function buildReservedMap(rsv){
+  const fctMap = new Map();
+  if(!rsv.length){ dbg('Reserved_inv: empty'); return fctMap; }
+
+  const h = Object.keys(rsv[0]);
+  const asinCol = detectCol(h, ['asin']);
+  const fctCol  = detectCol(h, ['reserved_fc-transfers','reservedfctransfers','fc-transfers','fctransfers','fc transfers']);
+
+  dbg('Reserved_inv cols → asin:', asinCol, 'fc-transfers:', fctCol);
+
+  if(!asinCol || !fctCol){
+    dbg('WARNING: missing cols in Reserved_inv. Headers:', h.join(', '));
+    return fctMap;
   }
 
-  dbg('Inbound map → by-sku entries:',bySkuMap.size,'by-asin entries:',byAsinMap.size);
-  return {bySkuMap, byAsinMap};
+  for(const row of rsv){
+    const asin = norm(row[asinCol]);
+    if(!asin || asin === 'ASIN' || ASIN_BLOCKLIST.has(asin)) continue;
+    const qty = toNum(row[fctCol]);
+    if(qty) fctMap.set(asin, (fctMap.get(asin)||0) + qty);
+  }
+
+  dbg('Reserved fc-transfer map entries:', fctMap.size);
+  return fctMap;
+}
+
+// FBA_Inv → inboundMap (inbound-quantity) keyed by ASIN
+function buildInboundMap(fbaInv){
+  const ibMap = new Map();
+  if(!fbaInv.length){ dbg('FBA_Inv: empty'); return ibMap; }
+
+  const h = Object.keys(fbaInv[0]);
+  const asinCol = detectCol(h, ['asin']);
+  const ibCol   = detectCol(h, ['inbound-quantity','inboundquantity','inbound quantity','inbound']);
+
+  dbg('FBA_Inv cols → asin:', asinCol, 'inbound-quantity:', ibCol);
+
+  if(!asinCol || !ibCol){
+    dbg('WARNING: missing cols in FBA_Inv. Headers:', h.join(', '));
+    return ibMap;
+  }
+
+  for(const row of fbaInv){
+    const asin = norm(row[asinCol]);
+    if(!asin || asin === 'ASIN' || ASIN_BLOCKLIST.has(asin)) continue;
+    const qty = toNum(row[ibCol]);
+    if(qty) ibMap.set(asin, (ibMap.get(asin)||0) + qty);
+  }
+
+  dbg('Inbound map entries:', ibMap.size);
+  return ibMap;
 }
 
 // ══════════════════════════════════════════
 // MERGE
 // ══════════════════════════════════════════
-function mergeData(sell,unsell,fba,rpt,lt){
+function mergeData(sell, unMap, amzFul, manage, rsv, fbaInv){
   step('Merging by ASIN…');
 
-  const {bySkuMap, byAsinMap} = buildInboundMap(rpt);
-  const poMap = buildPoMap(lt||[]);
-  poMapGlobal = poMap;
+  // ── Build FBA maps ──
+  const {fbaAvailMap, fbaUnsellMap, fbaSkuMap} = buildAmzFulMaps(amzFul);
+  const fctMap = buildReservedMap(rsv);
+  const ibMap  = buildInboundMap(fbaInv);
+  // Manage_FBA_inv (afn-fulfillable-quantity) no longer used — On Hand = Amz_fulfilled_inv SELLABLE
 
-  const sh=sell.length?Object.keys(sell[0]):[];
-  const sc={
-    asin: detectCol(sh,['asin']),
-    sku:  detectCol(sh,['sku','msku','sellersku','merchantsku']),
-    qty:  detectCol(sh,['sellable stock','sellablestock','sellable','sellableqty','availableqty','quantity','qty','stock','units','available']),
+  // ── FC sell map ──
+  const sh = sell.length ? Object.keys(sell[0]) : [];
+  const sc = {
+    asin: detectCol(sh, ['asin']),
+    sku:  detectCol(sh, ['sku','msku','sellersku','merchantsku']),
+    qty:  detectCol(sh, ['sellable stock','sellablestock','sellable','sellableqty','availableqty','quantity','qty','stock','units','available']),
   };
 
-  const uh=unsell.length?Object.keys(unsell[0]):[];
-  const uc={
-    asin: detectCol(uh,['asin']),
-    sku:  detectCol(uh,['sku','msku','sellersku']),
-  };
-  const skipU=new Set([uc.asin,uc.sku].filter(Boolean));
-  const dateCols=uh.filter(h=>!skipU.has(h)&&h!=='');
-  const lastDC=dateCols.length?dateCols[dateCols.length-1]:null;
-
-  const fh=fba.length?Object.keys(fba[0]):[];
-  const fc={
-    asin:      detectCol(fh,['asin']),
-    sku:       detectCol(fh,['seller-sku','sellersku','sku','msku']),
-    condition: detectCol(fh,['warehouse-condition-code','warehouseconditioncode','warehouse-condition','conditioncode']),
-    qty:       detectCol(fh,['quantity available','quantityavailable','qty available','quantity','qty']),
-    avail:     detectCol(fh,['afnfulfillable','fulfillable','fulfillablequantity','afnavailablequantity']),
-    unsell:    detectCol(fh,['afnunsellable','unsellablequantity','unfulfillable']),
-  };
-
-  if(!fc.asin)throw new Error('ASIN column not found in FBA sheet.\nHeaders: '+fh.join(', '));
-
-  const sellMap=new Map(),sellSku=new Map();
-  if(sc.asin&&sc.qty){
+  const sellMap = new Map(), sellSku = new Map();
+  if(sc.asin && sc.qty){
     for(const row of sell){
-      const asin=norm(row[sc.asin]);
-      // ── BLOCKLIST CHECK ──
-      if(!asin||asin==='-'||asin==='ASIN'||ASIN_BLOCKLIST.has(asin))continue;
-      sellMap.set(asin,(sellMap.get(asin)||0)+toNum(row[sc.qty]));
-      const sku=str(row[sc.sku]||'');
-      if(sku&&!sellSku.has(asin))sellSku.set(asin,sku);
+      const asin = norm(row[sc.asin]);
+      if(!asin || asin==='-' || asin==='ASIN' || ASIN_BLOCKLIST.has(asin)) continue;
+      sellMap.set(asin, (sellMap.get(asin)||0) + toNum(row[sc.qty]));
+      const sku = str(row[sc.sku]||'');
+      if(sku && !sellSku.has(asin)) sellSku.set(asin, sku);
     }
   }
 
-  const unMap=new Map();
-  if(uc.asin&&lastDC){
-    for(const row of unsell){
-      const asin=norm(row[uc.asin]);
-      // ── BLOCKLIST CHECK ──
-      if(!asin||asin==='-'||asin==='ASIN'||ASIN_BLOCKLIST.has(asin))continue;
-      unMap.set(asin,(unMap.get(asin)||0)+toNum(row[lastDC]));
-    }
-  }
+  // unMap already built by parseUnsellable (rightmost date col)
 
-  const fbaAvailMap=new Map(), fbaUnsellMap=new Map(), fbaSkuMap=new Map();
-  const useConditionFormat = !!(fc.condition && fc.qty);
+  const merged = [];
 
-  if(useConditionFormat){
-    for(const row of fba){
-      const asin=norm(row[fc.asin]);
-      // ── BLOCKLIST CHECK ──
-      if(!asin||asin==='-'||asin==='ASIN'||ASIN_BLOCKLIST.has(asin))continue;
-      const sku=str(row[fc.sku]||'');
-      const condition=norm(row[fc.condition]);
-      const qty=toNum(row[fc.qty]);
-      if(sku&&!fbaSkuMap.has(asin))fbaSkuMap.set(asin,sku);
-      if(condition==='SELLABLE'){
-        fbaAvailMap.set(asin,(fbaAvailMap.get(asin)||0)+qty);
-      } else {
-        fbaUnsellMap.set(asin,(fbaUnsellMap.get(asin)||0)+qty);
-      }
-    }
-  } else {
-    for(const row of fba){
-      const asin=norm(row[fc.asin]);
-      // ── BLOCKLIST CHECK ──
-      if(!asin||asin==='-'||asin==='ASIN'||ASIN_BLOCKLIST.has(asin))continue;
-      const sku=str(row[fc.sku]||'');
-      if(sku&&!fbaSkuMap.has(asin))fbaSkuMap.set(asin,sku);
-      fbaAvailMap.set(asin,(fbaAvailMap.get(asin)||0)+toNum(fc.avail?row[fc.avail]:0));
-      fbaUnsellMap.set(asin,(fbaUnsellMap.get(asin)||0)+toNum(fc.unsell?row[fc.unsell]:0));
-    }
-  }
-
-  function resolveInbound(resolvedSku, asin){
-    const skuKey = norm(resolvedSku);
-    if(bySkuMap.has(skuKey)) return bySkuMap.get(skuKey);
-    const asinKey = norm(asin);
-    if(byAsinMap.has(asinKey)) return byAsinMap.get(asinKey);
-    return 0;
-  }
-
-  const merged=[];
-  const fbaSet=new Set([...fbaAvailMap.keys(),...fbaUnsellMap.keys(),...fbaSkuMap.keys()]);
+  // All ASINs from FBA side (Amz_fulfilled_inv is primary FBA source)
+  const fbaSet = new Set([...fbaAvailMap.keys(), ...fbaUnsellMap.keys(), ...fbaSkuMap.keys()]);
 
   for(const asin of fbaSet){
-    // ── BLOCKLIST CHECK (safety net) ──
-    if(ASIN_BLOCKLIST.has(asin))continue;
+    if(ASIN_BLOCKLIST.has(asin)) continue;
     const sku        = resolveSkuName(asin, fbaSkuMap.get(asin)||'--');
-    const fbaAvail   = fbaAvailMap.get(asin)||0;
-    const fbaUnsell  = fbaUnsellMap.get(asin)||0;
-    const hasFCMatch = sellMap.has(asin)||unMap.has(asin);
-    const fcSell     = sellMap.get(asin)??0;
-    const fcUnsell   = unMap.get(asin)??0;
-    const total      = (hasFCMatch?fcSell:0)+fbaAvail;
-    const inbound    = resolveInbound(sku, asin);
-    const unit_cost  = COST_MAP[asin]||0;
+    const fbaAvail   = fbaAvailMap.get(asin)  || 0;   // SELLABLE from Amz_fulfilled_inv
+    const fbaUnsell  = fbaUnsellMap.get(asin) || 0;
+    const fcTransfer = fctMap.get(asin)        || 0;   // reserved_fc-transfers (display only)
+    const inbound    = ibMap.get(asin)          || 0;   // inbound-quantity
+    const onHand     = fbaAvail + fcTransfer;           // On Hand = Amz_fulfilled_inv SELLABLE + FC Transfer
+    const hasFCMatch = sellMap.has(asin) || unMap.has(asin);
+    const fcSell     = sellMap.get(asin) ?? 0;
+    const fcUnsell   = unMap.get(asin)   ?? 0;
+    const total      = fcSell + onHand;                // Total = FC Sell + On Hand
+    const unit_cost  = COST_MAP[asin] || 0;
     const total_cost = unit_cost * total;
-    const poEntries  = poMap.get(asin)||[];
-    const po_qty     = poEntries.reduce((s,e)=>s+e.qty,0);
-    const po_status  = poEntries.length ? [...new Set(poEntries.map(e=>e.status))].filter(Boolean).join(', ') : '';
-    const po_del_date= poEntries.length ? [...new Set(poEntries.map(e=>e.del_date))].filter(Boolean).join(', ') : '';
-    const issues     = buildIssues({hasFCMatch,isFCOnly:false,fcSell,fbaAvail,fcUnsell,fbaUnsell,total});
-    merged.push({sku,asin,fc_sellable:hasFCMatch?fcSell:0,fc_unsellable:hasFCMatch?fcUnsell:0,fba_available:fbaAvail,fba_unsellable:fbaUnsell,inbound,total,po_qty,po_status,po_del_date,unit_cost,total_cost,hasFCMatch,source:'fba',issues,issue_count:issues.length});
+    const issues     = buildIssues({hasFCMatch, isFCOnly:false, fcSell, fbaAvail:onHand, fcUnsell, fbaUnsell, total});
+    merged.push({
+      sku, asin,
+      fc_sellable:  hasFCMatch ? fcSell   : 0,
+      fc_unsellable:hasFCMatch ? fcUnsell : 0,
+      fba_available: fbaAvail,   // raw afn sellable — display col
+      fba_unsellable:fbaUnsell,
+      inbound,
+      fc_transfer:  fcTransfer,
+      on_hand:      onHand,
+      total,
+      unit_cost, total_cost,
+      hasFCMatch, source:'fba',
+      issues, issue_count:issues.length
+    });
   }
 
-  const allFCAsins=new Set([...sellMap.keys(),...unMap.keys()]);
+  // FC-only ASINs (in FC sheets but not in Amz_fulfilled_inv)
+  const allFCAsins = new Set([...sellMap.keys(), ...unMap.keys()]);
   for(const asin of allFCAsins){
-    // ── BLOCKLIST CHECK (safety net) ──
-    if(ASIN_BLOCKLIST.has(asin))continue;
-    if(fbaSet.has(asin))continue;
-    const fcSell   = sellMap.get(asin)??0;
-    const fcUnsell = unMap.get(asin)??0;
-    const sku      = resolveSkuName(asin, sellSku.get(asin)||'--');
-    const total    = fcSell;
-    const inbound  = resolveInbound(sku, asin);
-    const unit_cost  = COST_MAP[asin]||0;
-    const total_cost = unit_cost * total;
-    const poEntries  = poMap.get(asin)||[];
-    const po_qty     = poEntries.reduce((s,e)=>s+e.qty,0);
-    const po_status  = poEntries.length ? [...new Set(poEntries.map(e=>e.status))].filter(Boolean).join(', ') : '';
-    const po_del_date= poEntries.length ? [...new Set(poEntries.map(e=>e.del_date))].filter(Boolean).join(', ') : '';
-    const issues   = buildIssues({hasFCMatch:true,isFCOnly:true,fcSell,fbaAvail:0,fcUnsell,fbaUnsell:0,total});
-    merged.push({sku,asin,fc_sellable:fcSell,fc_unsellable:fcUnsell,fba_available:0,fba_unsellable:0,inbound,total,po_qty,po_status,po_del_date,unit_cost,total_cost,hasFCMatch:true,source:'fc',issues,issue_count:issues.length});
+    if(ASIN_BLOCKLIST.has(asin)) continue;
+    if(fbaSet.has(asin)) continue;
+    const fcSell    = sellMap.get(asin) ?? 0;
+    const fcUnsell  = unMap.get(asin)   ?? 0;
+    const sku       = resolveSkuName(asin, sellSku.get(asin)||'--');
+    const fcTransfer= fctMap.get(asin)  || 0;
+    const inbound   = ibMap.get(asin)   || 0;
+    const onHand    = (fbaAvailMap.get(asin) || 0) + fcTransfer;  // On Hand = Amz_fulfilled_inv SELLABLE + FC Transfer
+    const total     = fcSell + onHand;
+    const unit_cost = COST_MAP[asin] || 0;
+    const total_cost= unit_cost * total;
+    const issues    = buildIssues({hasFCMatch:true, isFCOnly:true, fcSell, fbaAvail:onHand, fcUnsell, fbaUnsell:0, total});
+    merged.push({
+      sku, asin,
+      fc_sellable:  fcSell,
+      fc_unsellable:fcUnsell,
+      fba_available:0,
+      fba_unsellable:0,
+      inbound,
+      fc_transfer:  fcTransfer,
+      on_hand:      onHand,
+      total,
+      unit_cost, total_cost,
+      hasFCMatch:true, source:'fc',
+      issues, issue_count:issues.length
+    });
   }
 
-  dbg('Merged (after blocklist):',merged.length);
+  dbg('Merged (after blocklist):', merged.length);
   return merged;
 }
 
 // ══════════════════════════════════════════
 // ISSUE BUILDER
 // ══════════════════════════════════════════
-function buildIssues({hasFCMatch,isFCOnly,fcSell,fbaAvail,fcUnsell,fbaUnsell,total}){
-  const issues=[];
+function buildIssues({hasFCMatch, isFCOnly, fcSell, fbaAvail, fcUnsell, fbaUnsell, total}){
+  const issues = [];
   if(!hasFCMatch){
-    issues.push({type:'mm',label:'ASIN Mismatch',msg:'This ASIN is present in FBA inventory but was not found in any FC sheet. FC Sellable and Unsellable values will show as 0.'});
+    issues.push({type:'mm', label:'ASIN Mismatch', msg:'This ASIN is in FBA inventory but not found in any FC sheet. FC Sellable and Unsellable will show as 0.'});
   }
   if(isFCOnly){
-    issues.push({type:'fo',label:'FC Only',msg:'This ASIN exists in the FC sheets but has no matching FBA inventory record. FBA values are shown as 0.'});
+    issues.push({type:'fo', label:'FC Only', msg:'This ASIN exists in FC sheets but has no matching FBA inventory record. FBA values shown as 0.'});
   }
-  if(total>0&&total<50){
-    issues.push({type:'ls',label:'Low Stock',msg:`Total sellable is ${total} units, which is below the low-stock threshold of 50. Consider restocking soon.`});
+  if(total > 0 && total < 50){
+    issues.push({type:'ls', label:'Low Stock', msg:`Total sellable is ${total} units, below the low-stock threshold of 50. Consider restocking.`});
   }
-  if(total===0&&!isFCOnly&&hasFCMatch){
-    issues.push({type:'ls',label:'Out of Stock',msg:'Total sellable units is 0. No stock available in FC or FBA.'});
+  if(total === 0 && !isFCOnly && hasFCMatch){
+    issues.push({type:'ls', label:'Out of Stock', msg:'Total sellable units is 0. No stock in FC or On Hand.'});
   }
-  const totUn=fcUnsell+fbaUnsell;
-  if(totUn>0&&total>0&&totUn>=total){
-    issues.push({type:'hu',label:'High Unsellable',msg:`Unsellable units (${totUn}) equals or exceeds sellable (${total}). Review condition, disposal or reprocessing.`});
-  } else if(totUn>0&&total>0&&totUn/total>0.4){
-    issues.push({type:'hu',label:'High Unsellable',msg:`Unsellable (${totUn}) is ${Math.round(totUn/total*100)}% of sellable (${total}), above the 40% warning threshold.`});
+  const totUn = fcUnsell + fbaUnsell;
+  if(totUn > 0 && total > 0 && totUn >= total){
+    issues.push({type:'hu', label:'High Unsellable', msg:`Unsellable (${totUn}) equals or exceeds sellable (${total}). Review disposal or reprocessing.`});
+  } else if(totUn > 0 && total > 0 && totUn/total > 0.4){
+    issues.push({type:'hu', label:'High Unsellable', msg:`Unsellable (${totUn}) is ${Math.round(totUn/total*100)}% of sellable (${total}), above 40% threshold.`});
   }
   return issues;
 }
@@ -1037,96 +1087,86 @@ function buildIssues({hasFCMatch,isFCOnly,fcSell,fbaAvail,fcUnsell,fbaUnsell,tot
 // KPIs
 // ══════════════════════════════════════════
 function renderKPIs(rows){
-  set('k0',rows.reduce((s,r)=>s+r.total,0).toLocaleString());
-  set('k1',rows.reduce((s,r)=>s+r.fc_sellable,0).toLocaleString());
-  set('k2',rows.reduce((s,r)=>s+r.fba_available,0).toLocaleString());
-  set('k7',rows.reduce((s,r)=>s+r.inbound,0).toLocaleString());
-  set('k3',rows.reduce((s,r)=>s+r.fc_unsellable+r.fba_unsellable,0).toLocaleString());
-  set('k4',rows.filter(r=>r.total>=0&&r.total<50).length.toLocaleString());
-  set('k5',rows.filter(r=>r.issue_count>0).length.toLocaleString());
-  const totalCost = rows.reduce((s,r)=>s+r.total_cost,0);
+  set('k0', rows.reduce((s,r) => s+r.total, 0).toLocaleString());
+  set('k1', rows.reduce((s,r) => s+r.fc_sellable, 0).toLocaleString());
+  set('k2', rows.reduce((s,r) => s+r.fba_available, 0).toLocaleString());
+  set('k_onhand', rows.reduce((s,r) => s+r.on_hand, 0).toLocaleString());
+  set('k_fct',    rows.reduce((s,r) => s+r.fc_transfer, 0).toLocaleString());
+  set('k3', rows.reduce((s,r) => s+r.fc_unsellable+r.fba_unsellable, 0).toLocaleString());
+  set('k4', rows.filter(r => r.total >= 0 && r.total < 50).length.toLocaleString());
+  set('k5', rows.filter(r => r.issue_count > 0).length.toLocaleString());
+  const totalCost = rows.reduce((s,r) => s+r.total_cost, 0);
   set('k6', fmtCur(totalCost));
   $('k6').title = fmtCurFull(totalCost);
-  // PO KPIs — sum from poMapGlobal (all active entries, not deduplicated by ASIN)
-  let inTransit=0, inProd=0;
-  for(const entries of poMapGlobal.values()){
-    for(const e of entries){
-      const s=e.status.toLowerCase();
-      if(s==='in transit') inTransit+=e.qty;
-      else if(s==='in production') inProd+=e.qty;
-    }
-  }
-  set('k8', inTransit.toLocaleString());
-  set('k9', inProd.toLocaleString());
 }
 
 // ══════════════════════════════════════════
 // CHARTS
 // ══════════════════════════════════════════
 function renderCharts(rows){
-  const top15=[...rows].filter(r=>r.fc_sellable>0||r.fba_available>0||r.inbound>0)
-    .sort((a,b)=>(b.fc_sellable+b.fba_available)-(a.fc_sellable+a.fba_available))
+  const top15 = [...rows]
+    .filter(r => r.fc_sellable>0 || r.on_hand>0 || r.fc_transfer>0)
+    .sort((a,b) => (b.fc_sellable+b.on_hand) - (a.fc_sellable+a.on_hand))
     .slice(0,15);
-  const labels=top15.map(r=>{const s=str(r.sku);return s.length>16?s.slice(0,15)+'…':s;});
+  const labels = top15.map(r => { const s=str(r.sku); return s.length>16 ? s.slice(0,15)+'…' : s; });
 
-  if(barChart)barChart.destroy();
-  barChart=new Chart($('cbar').getContext('2d'),{
+  if(barChart) barChart.destroy();
+  barChart = new Chart($('cbar').getContext('2d'),{
     type:'bar',
-    data:{labels,datasets:[
-      {label:'FC Sellable',data:top15.map(r=>r.fc_sellable),backgroundColor:'rgba(99,102,241,0.8)',borderColor:'#6366f1',borderWidth:1,borderRadius:4,borderSkipped:false},
-      {label:'FBA Available',data:top15.map(r=>r.fba_available),backgroundColor:'rgba(56,189,248,0.8)',borderColor:'#38bdf8',borderWidth:1,borderRadius:4,borderSkipped:false},
-      {label:'Inbound',data:top15.map(r=>r.inbound),backgroundColor:'rgba(244,114,182,0.8)',borderColor:'#f472b6',borderWidth:1,borderRadius:4,borderSkipped:false},
+    data:{labels, datasets:[
+      {label:'FC Sellable', data:top15.map(r=>r.fc_sellable), backgroundColor:'rgba(99,102,241,0.8)', borderColor:'#6366f1', borderWidth:1, borderRadius:4, borderSkipped:false},
+      {label:'On Hand',     data:top15.map(r=>r.on_hand),     backgroundColor:'rgba(196,181,253,0.8)', borderColor:'#c4b5fd', borderWidth:1, borderRadius:4, borderSkipped:false},
+      {label:'FC Transfer', data:top15.map(r=>r.fc_transfer), backgroundColor:'rgba(94,234,212,0.8)', borderColor:'#5eead4', borderWidth:1, borderRadius:4, borderSkipped:false},
     ]},
     options:{
-      responsive:true,maintainAspectRatio:false,
-      interaction:{mode:'index',intersect:false},
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index', intersect:false},
       plugins:{
         legend:{display:false},
-        tooltip:{backgroundColor:'#0a0b10',borderColor:'#2a2d3e',borderWidth:1,titleColor:'#e8eaf6',bodyColor:'#9395a5',padding:10,callbacks:{title:items=>top15[items[0].dataIndex].sku}},
+        tooltip:{backgroundColor:'#0a0b10', borderColor:'#2a2d3e', borderWidth:1, titleColor:'#e8eaf6', bodyColor:'#9395a5', padding:10,
+          callbacks:{title:items=>top15[items[0].dataIndex].sku}},
       },
       scales:{
-        x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#5f6170',font:{size:10,family:'IBM Plex Mono'},maxRotation:35}},
-        y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#5f6170',font:{size:10,family:'IBM Plex Mono'}}},
+        x:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#5f6170', font:{size:10,family:'IBM Plex Mono'}, maxRotation:35}},
+        y:{grid:{color:'rgba(255,255,255,0.05)'}, ticks:{color:'#5f6170', font:{size:10,family:'IBM Plex Mono'}}},
       }
     }
   });
 
-  const fcUn=rows.reduce((s,r)=>s+r.fc_unsellable,0);
-  const fbaUn=rows.reduce((s,r)=>s+r.fba_unsellable,0);
-  const grand=fcUn+fbaUn;
-  set('dtotal',grand.toLocaleString());
-  set('dl0',`FC — ${fcUn.toLocaleString()}`);
-  set('dl1',`FBA — ${fbaUn.toLocaleString()}`);
+  const fcUn  = rows.reduce((s,r) => s+r.fc_unsellable, 0);
+  const fbaUn = rows.reduce((s,r) => s+r.fba_unsellable, 0);
+  const grand = fcUn + fbaUn;
+  set('dtotal', grand.toLocaleString());
+  set('dl0', `FC — ${fcUn.toLocaleString()}`);
+  set('dl1', `FBA — ${fbaUn.toLocaleString()}`);
 
-  if(donutChart)donutChart.destroy();
-  const hasD=grand>0;
-  donutChart=new Chart($('cdonut').getContext('2d'),{
+  if(donutChart) donutChart.destroy();
+  const hasD = grand > 0;
+  donutChart = new Chart($('cdonut').getContext('2d'),{
     type:'doughnut',
     data:{
       labels:['FC Unsellable','FBA Unsellable'],
-      datasets:[{data:hasD?[fcUn,fbaUn]:[1,1],backgroundColor:hasD?['rgba(167,139,250,0.85)','rgba(245,158,11,0.85)']:['rgba(60,63,90,0.4)','rgba(60,63,90,0.4)'],borderColor:'#1e2130',borderWidth:2,hoverOffset:6}]
+      datasets:[{data:hasD?[fcUn,fbaUn]:[1,1], backgroundColor:hasD?['rgba(167,139,250,0.85)','rgba(245,158,11,0.85)']:['rgba(60,63,90,0.4)','rgba(60,63,90,0.4)'], borderColor:'#1e2130', borderWidth:2, hoverOffset:6}]
     },
-    options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{display:false},tooltip:{enabled:hasD,backgroundColor:'#0a0b10',borderColor:'#2a2d3e',borderWidth:1,titleColor:'#e8eaf6',bodyColor:'#9395a5',padding:10}}}
+    options:{responsive:true, maintainAspectRatio:false, cutout:'70%', plugins:{legend:{display:false}, tooltip:{enabled:hasD, backgroundColor:'#0a0b10', borderColor:'#2a2d3e', borderWidth:1, titleColor:'#e8eaf6', bodyColor:'#9395a5', padding:10}}}
   });
 
-  const costRows = [...rows].filter(r=>r.total_cost>0).sort((a,b)=>b.total_cost-a.total_cost).slice(0,15);
-  const costLabels = costRows.map(r=>{const s=str(r.sku);return s.length>16?s.slice(0,15)+'…':s;});
+  const costRows  = [...rows].filter(r=>r.total_cost>0).sort((a,b)=>b.total_cost-a.total_cost).slice(0,15);
+  const costLabels= costRows.map(r=>{ const s=str(r.sku); return s.length>16?s.slice(0,15)+'…':s; });
 
-  if(costBarChart)costBarChart.destroy();
-  costBarChart=new Chart($('ccostbar').getContext('2d'),{
+  if(costBarChart) costBarChart.destroy();
+  costBarChart = new Chart($('ccostbar').getContext('2d'),{
     type:'bar',
-    data:{labels:costLabels,datasets:[{
+    data:{labels:costLabels, datasets:[{
       label:'Total Cost (₹)',
       data:costRows.map(r=>r.total_cost),
-      backgroundColor:'rgba(20,184,166,0.75)',
-      borderColor:'#14b8a6',
-      borderWidth:1,borderRadius:4,borderSkipped:false
+      backgroundColor:'rgba(20,184,166,0.75)', borderColor:'#14b8a6', borderWidth:1, borderRadius:4, borderSkipped:false
     }]},
     options:{
-      responsive:true,maintainAspectRatio:false,
+      responsive:true, maintainAspectRatio:false,
       plugins:{
         legend:{display:false},
-        tooltip:{backgroundColor:'#0a0b10',borderColor:'#2a2d3e',borderWidth:1,titleColor:'#e8eaf6',bodyColor:'#9395a5',padding:10,
+        tooltip:{backgroundColor:'#0a0b10', borderColor:'#2a2d3e', borderWidth:1, titleColor:'#e8eaf6', bodyColor:'#9395a5', padding:10,
           callbacks:{
             title:items=>costRows[items[0].dataIndex].sku,
             label:items=>`₹${items.raw.toLocaleString('en-IN',{maximumFractionDigits:0})} (${costRows[items.dataIndex].total} units × ₹${costRows[items.dataIndex].unit_cost.toLocaleString('en-IN')})`
@@ -1134,33 +1174,33 @@ function renderCharts(rows){
         },
       },
       scales:{
-        x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#5f6170',font:{size:10,family:'IBM Plex Mono'},maxRotation:35}},
-        y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#5f6170',font:{size:10,family:'IBM Plex Mono'},callback:v=>fmtCur(v)}},
+        x:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#5f6170', font:{size:10,family:'IBM Plex Mono'}, maxRotation:35}},
+        y:{grid:{color:'rgba(255,255,255,0.05)'}, ticks:{color:'#5f6170', font:{size:10,family:'IBM Plex Mono'}, callback:v=>fmtCur(v)}},
       }
     }
   });
 
   const top10cost = [...rows].filter(r=>r.unit_cost>0).sort((a,b)=>b.unit_cost-a.unit_cost).slice(0,10);
-  const totalPortfolioCost = rows.reduce((s,r)=>s+r.total_cost,0);
+  const totalPortfolioCost = rows.reduce((s,r) => s+r.total_cost, 0);
   set('dctotal', fmtCur(totalPortfolioCost));
 
   const donutColors = ['#14b8a6','#6366f1','#f59e0b','#38bdf8','#a78bfa','#22c55e','#ef4444','#fb923c','#e879f9','#64748b'];
 
-  if(costDonutChart)costDonutChart.destroy();
+  if(costDonutChart) costDonutChart.destroy();
   const hasCost = top10cost.some(r=>r.total_cost>0);
-  costDonutChart=new Chart($('ccostdonut').getContext('2d'),{
+  costDonutChart = new Chart($('ccostdonut').getContext('2d'),{
     type:'doughnut',
     data:{
       labels:top10cost.map(r=>r.sku),
       datasets:[{
-        data:hasCost?top10cost.map(r=>r.total_cost>0?r.total_cost:0.001):[1],
-        backgroundColor:hasCost?donutColors.slice(0,top10cost.length):['rgba(60,63,90,0.4)'],
-        borderColor:'#1e2130',borderWidth:2,hoverOffset:6
+        data:hasCost ? top10cost.map(r=>r.total_cost>0?r.total_cost:0.001) : [1],
+        backgroundColor:hasCost ? donutColors.slice(0,top10cost.length) : ['rgba(60,63,90,0.4)'],
+        borderColor:'#1e2130', borderWidth:2, hoverOffset:6
       }]
     },
-    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{
+    options:{responsive:true, maintainAspectRatio:false, cutout:'65%', plugins:{
       legend:{display:false},
-      tooltip:{enabled:hasCost,backgroundColor:'#0a0b10',borderColor:'#2a2d3e',borderWidth:1,titleColor:'#e8eaf6',bodyColor:'#9395a5',padding:10,
+      tooltip:{enabled:hasCost, backgroundColor:'#0a0b10', borderColor:'#2a2d3e', borderWidth:1, titleColor:'#e8eaf6', bodyColor:'#9395a5', padding:10,
         callbacks:{
           label:ctx=>`₹${ctx.raw.toLocaleString('en-IN',{maximumFractionDigits:0})} (${totalPortfolioCost>0?Math.round(ctx.raw/totalPortfolioCost*100):0}%)`
         }
@@ -1169,7 +1209,7 @@ function renderCharts(rows){
   });
 
   const leg = $('costdonutlegend');
-  leg.innerHTML = top10cost.map((r,i)=>`
+  leg.innerHTML = top10cost.map((r,i) => `
     <div class="dl-item">
       <div class="dl-sw" style="background:${donutColors[i]}"></div>
       <span style="font-size:.63rem;color:var(--text2);">${r.sku.length>18?r.sku.slice(0,17)+'…':r.sku}</span>
@@ -1177,141 +1217,23 @@ function renderCharts(rows){
 }
 
 // ══════════════════════════════════════════
-// PO CHARTS
-// ══════════════════════════════════════════
-function renderPoCharts(rows){
-  // Collect active PO entries per SKU name from rows that have po_qty > 0
-  const poRows = rows.filter(r=>r.po_qty>0);
-  // Group by status for donut
-  const statusTotals = {};
-  for(const entries of poMapGlobal.values()){
-    for(const e of entries){
-      const s = e.status || 'Unknown';
-      statusTotals[s] = (statusTotals[s]||0) + e.qty;
-    }
-  }
-  const totalActive = Object.values(statusTotals).reduce((s,v)=>s+v,0);
-  set('dpototal', totalActive.toLocaleString());
-
-  // Bar chart — top PO rows by qty, colored by dominant status
-  const sortedPo = [...poRows].sort((a,b)=>b.po_qty-a.po_qty).slice(0,12);
-  const poLabels = sortedPo.map(r=>{const s=str(r.sku);return s.length>16?s.slice(0,15)+'…':s;});
-  const transitColor  = 'rgba(56,189,248,0.8)';
-  const productColor  = 'rgba(245,158,11,0.8)';
-
-  // Per-bar colors based on status
-  const barColors = sortedPo.map(r=>{
-    const s = r.po_status.toLowerCase();
-    if(s.includes('in transit')) return transitColor;
-    if(s.includes('in production')) return productColor;
-    return 'rgba(167,139,250,0.8)';
-  });
-
-  if(poBarChart)poBarChart.destroy();
-  const poBarCtx = $('cpobar');
-  if(!poBarCtx){ return; }
-
-  if(!sortedPo.length){
-    if(poBarChart)poBarChart.destroy();
-    poBarChart=null;
-    const ctx=poBarCtx.getContext('2d');
-    ctx.clearRect(0,0,poBarCtx.width,poBarCtx.height);
-    $('po-charts-row').style.display='none';
-    return;
-  }
-
-  $('po-charts-row').style.display='';
-  poBarChart=new Chart(poBarCtx.getContext('2d'),{
-    type:'bar',
-    data:{labels:poLabels,datasets:[{
-      label:'PO Qty',
-      data:sortedPo.map(r=>r.po_qty),
-      backgroundColor:barColors,
-      borderColor:sortedPo.map(r=>{
-        const s=r.po_status.toLowerCase();
-        if(s.includes('in transit')) return '#38bdf8';
-        if(s.includes('in production')) return '#f59e0b';
-        return '#a78bfa';
-      }),
-      borderWidth:1,borderRadius:4,borderSkipped:false
-    }]},
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{
-        legend:{display:false},
-        tooltip:{backgroundColor:'#0a0b10',borderColor:'#2a2d3e',borderWidth:1,titleColor:'#e8eaf6',bodyColor:'#9395a5',padding:10,
-          callbacks:{
-            title:items=>sortedPo[items[0].dataIndex].sku,
-            label:items=>`${items.raw.toLocaleString()} units — ${sortedPo[items.dataIndex].po_status}`
-          }
-        },
-      },
-      scales:{
-        x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#5f6170',font:{size:10,family:'IBM Plex Mono'},maxRotation:35}},
-        y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#5f6170',font:{size:10,family:'IBM Plex Mono'}}},
-      }
-    }
-  });
-
-  // Donut
-  const statusKeys = Object.keys(statusTotals);
-  const donutColors=['#38bdf8','#f59e0b','#a78bfa','#22c55e','#ef4444'];
-  if(poDonutChart)poDonutChart.destroy();
-  const hasPoData = totalActive > 0;
-  poDonutChart=new Chart($('cpodonut').getContext('2d'),{
-    type:'doughnut',
-    data:{
-      labels:hasPoData?statusKeys:['No Active POs'],
-      datasets:[{
-        data:hasPoData?statusKeys.map(k=>statusTotals[k]):[1],
-        backgroundColor:hasPoData?donutColors.slice(0,statusKeys.length):['rgba(60,63,90,0.4)'],
-        borderColor:'#1e2130',borderWidth:2,hoverOffset:6
-      }]
-    },
-    options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{
-      legend:{display:false},
-      tooltip:{enabled:hasPoData,backgroundColor:'#0a0b10',borderColor:'#2a2d3e',borderWidth:1,titleColor:'#e8eaf6',bodyColor:'#9395a5',padding:10,
-        callbacks:{label:ctx=>`${ctx.raw.toLocaleString()} units (${totalActive>0?Math.round(ctx.raw/totalActive*100):0}%)`}
-      }
-    }}
-  });
-  const leg=$('podonutlegend');
-  leg.innerHTML = statusKeys.map((k,i)=>`
-    <div class="dl-item">
-      <div class="dl-sw" style="background:${donutColors[i]}"></div>
-      <span style="font-size:.68rem;color:var(--text2);">${k} — ${statusTotals[k].toLocaleString()}</span>
-    </div>`).join('');
-}
-
-// ══════════════════════════════════════════
 // TABLE
 // ══════════════════════════════════════════
 function renderTable(rows){
-  const tbody=$('tbody');
-  set('rbadge',`${rows.length.toLocaleString()} rows`);
-  set('tfc',`Showing ${rows.length.toLocaleString()} of ${allRows.length.toLocaleString()} entries`);
+  const tbody = $('tbody');
+  set('rbadge', `${rows.length.toLocaleString()} rows`);
+  set('tfc', `Showing ${rows.length.toLocaleString()} of ${allRows.length.toLocaleString()} entries`);
   if(!rows.length){
-    tbody.innerHTML=`<tr><td colspan="14"><div class="empty"><div class="ei">📦</div><p>No rows match the current filter.</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12"><div class="empty"><div class="ei">📦</div><p>No rows match the current filter.</p></div></td></tr>`;
     return;
   }
-  tbody.innerHTML=rows.map(r=>{
-    const tc=r.total<50&&r.total>=0?'ntot low':'ntot';
-    const unitCostHtml = r.unit_cost>0
-      ? `<td class="td-cost compact">${fmtCurFull(r.unit_cost)}</td>`
-      : `<td class="td-cost z compact">—</td>`;
-    const totalCostHtml = r.total_cost>0
-      ? `<td class="td-cost">${fmtCurFull(r.total_cost)}</td>`
-      : `<td class="td-cost z">—</td>`;
-    const inboundClass = r.inbound > 0 ? 'n ib compact' : 'n ib z compact';
-    const poQtyHtml = r.po_qty > 0
-      ? `<td class="n compact" style="color:#38bdf8;">${r.po_qty.toLocaleString()}</td>`
-      : `<td class="n compact z">—</td>`;
-    const poStatusHtml = r.po_status
-      ? `<td style="font-size:.68rem;white-space:nowrap;padding:6px 8px;"><span style="padding:2px 7px;border-radius:5px;font-weight:700;font-size:.61rem;${r.po_status.toLowerCase().includes('in transit')?'background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.3);color:#38bdf8':r.po_status.toLowerCase().includes('in production')?'background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);color:#f59e0b':'background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);color:#a78bfa'}">${esc(r.po_status)}</span></td>`
-      : `<td class="n z compact">—</td>`;
-    const poDelHtml = r.po_del_date
-      ? `<td style="font-family:'IBM Plex Mono',monospace;font-size:.68rem;color:#5eead4;white-space:nowrap;">${esc(r.po_del_date)}</td>`
-      : `<td class="n z compact">—</td>`;
+  tbody.innerHTML = rows.map(r => {
+    const tc = r.total < 50 && r.total >= 0 ? 'ntot low' : 'ntot';
+    const unitCostHtml  = r.unit_cost  > 0 ? `<td class="td-cost compact">${fmtCurFull(r.unit_cost)}</td>`  : `<td class="td-cost z compact">—</td>`;
+    const totalCostHtml = r.total_cost > 0 ? `<td class="td-cost">${fmtCurFull(r.total_cost)}</td>` : `<td class="td-cost z">—</td>`;
+    const fctClass  = r.fc_transfer > 0 ? 'n fct compact' : 'n fct z compact';
+    const ibClass   = r.inbound     > 0 ? 'n ib compact'  : 'n ib z compact';
+    const onhClass  = r.on_hand     > 0 ? 'n onh compact' : 'n onh z compact';
     return `<tr>
       <td class="td-sku" title="${esc(r.sku)}">${esc(r.sku)}</td>
       <td class="td-asin">${esc(r.asin)}</td>
@@ -1319,29 +1241,28 @@ function renderTable(rows){
       <td class="n compact ${r.fc_unsellable>0?'w':'z'}">${r.fc_unsellable.toLocaleString()}</td>
       <td class="n compact ${r.fba_available>0?'g':'z'}">${r.fba_available.toLocaleString()}</td>
       <td class="n compact ${r.fba_unsellable>0?'w':'z'}">${r.fba_unsellable.toLocaleString()}</td>
-      <td class="${inboundClass}">${r.inbound > 0 ? r.inbound.toLocaleString() : '—'}</td>
+      <td class="${ibClass}">${r.inbound > 0 ? r.inbound.toLocaleString() : '—'}</td>
+      <td class="${fctClass}">${r.fc_transfer > 0 ? r.fc_transfer.toLocaleString() : '—'}</td>
+      <td class="${onhClass}">${r.on_hand > 0 ? r.on_hand.toLocaleString() : '—'}</td>
       <td class="${tc} compact">${r.total.toLocaleString()}</td>
-      ${poQtyHtml}
-      ${poStatusHtml}
-      ${poDelHtml}
       ${unitCostHtml}
       ${totalCostHtml}
       <td class="td-st">${badgeHtml(r)}</td>
     </tr>`;
   }).join('');
 
-  tbody.querySelectorAll('.th').forEach(el=>{
-    el.addEventListener('click',e=>{
+  tbody.querySelectorAll('.th').forEach(el => {
+    el.addEventListener('click', e => {
       e.stopPropagation();
-      const was=el.classList.contains('to');
-      document.querySelectorAll('.th.to').forEach(x=>x.classList.remove('to'));
-      if(!was)el.classList.add('to');
+      const was = el.classList.contains('to');
+      document.querySelectorAll('.th.to').forEach(x => x.classList.remove('to'));
+      if(!was) el.classList.add('to');
     });
   });
 }
 
 function badgeHtml(r){
-  if(!r.issues||!r.issues.length)return '';
+  if(!r.issues||!r.issues.length) return '';
   return '<div class="iw">'+r.issues.map(iss=>`
     <span class="th" tabindex="0">
       <span class="ibadge ${iss.type}">${iss.type==='mm'?'⚠':`${iss.type==='fo'?'◈':iss.type==='ls'?'↓':'↑'} ${esc(iss.label)}`}</span>
@@ -1349,47 +1270,47 @@ function badgeHtml(r){
     </span>`).join('')+'</div>';
 }
 
-document.addEventListener('click',()=>document.querySelectorAll('.th.to').forEach(x=>x.classList.remove('to')));
+document.addEventListener('click', () => document.querySelectorAll('.th.to').forEach(x => x.classList.remove('to')));
 
 // ══════════════════════════════════════════
 // FILTERS + SORT
 // ══════════════════════════════════════════
 function applyFilters(){
-  const q=$('sinput').value.trim().toLowerCase();
-  let rows=[...allRows];
-  if(chips.has('mm'))  rows=rows.filter(r=>r.issues.some(i=>i.type==='mm'));
-  if(chips.has('ls'))  rows=rows.filter(r=>r.issues.some(i=>i.type==='ls'));
-  if(chips.has('hu'))  rows=rows.filter(r=>r.issues.some(i=>i.type==='hu'));
-  if(chips.has('fo'))  rows=rows.filter(r=>r.issues.some(i=>i.type==='fo'));
-  if(q)rows=rows.filter(r=>r.sku.toLowerCase().includes(q)||r.asin.toLowerCase().includes(q));
+  const q = $('sinput').value.trim().toLowerCase();
+  let rows = [...allRows];
+  if(chips.has('mm')) rows = rows.filter(r => r.issues.some(i => i.type==='mm'));
+  if(chips.has('ls')) rows = rows.filter(r => r.issues.some(i => i.type==='ls'));
+  if(chips.has('hu')) rows = rows.filter(r => r.issues.some(i => i.type==='hu'));
+  if(chips.has('fo')) rows = rows.filter(r => r.issues.some(i => i.type==='fo'));
+  if(q) rows = rows.filter(r => r.sku.toLowerCase().includes(q) || r.asin.toLowerCase().includes(q));
   if(sortCol){
-    rows.sort((a,b)=>{
-      const av=a[sortCol],bv=b[sortCol];
-      return(typeof av==='number'?(av-bv):String(av).localeCompare(String(bv)))*sortDir;
+    rows.sort((a,b) => {
+      const av=a[sortCol], bv=b[sortCol];
+      return (typeof av==='number' ? (av-bv) : String(av).localeCompare(String(bv))) * sortDir;
     });
   }
-  filteredRows=rows;
+  filteredRows = rows;
   renderTable(rows);
 }
 
 function toggleChip(name){
-  chips.has(name)?chips.delete(name):chips.add(name);
-  const map={mm:'r',ls:'o',hu:'p',fo:'b'};
-  for(const[n,cls]of Object.entries(map)){
-    const el=$('ch'+n);
-    if(!el)continue;
-    el.className='chip';
-    if(chips.has(n))el.classList.add(cls);
+  chips.has(name) ? chips.delete(name) : chips.add(name);
+  const map = {mm:'r', ls:'o', hu:'p', fo:'b'};
+  for(const [n,cls] of Object.entries(map)){
+    const el = $('ch'+n);
+    if(!el) continue;
+    el.className = 'chip';
+    if(chips.has(n)) el.classList.add(cls);
   }
   applyFilters();
 }
 
 function sortBy(col){
-  if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=-1;}
-  document.querySelectorAll('.sarr').forEach(s=>s.textContent='↕');
-  document.querySelectorAll('th').forEach(t=>t.classList.remove('srt'));
-  const a=document.querySelector(`.sarr[data-col="${col}"]`);
-  if(a){a.textContent=sortDir===1?'↑':'↓';a.closest('th').classList.add('srt');}
+  if(sortCol===col) sortDir*=-1; else {sortCol=col; sortDir=-1;}
+  document.querySelectorAll('.sarr').forEach(s => s.textContent='↕');
+  document.querySelectorAll('th').forEach(t => t.classList.remove('srt'));
+  const a = document.querySelector(`.sarr[data-col="${col}"]`);
+  if(a){ a.textContent = sortDir===1?'↑':'↓'; a.closest('th').classList.add('srt'); }
   applyFilters();
 }
 
@@ -1397,41 +1318,38 @@ function sortBy(col){
 // BOOT
 // ══════════════════════════════════════════
 async function boot(){
-  const t0=performance.now();
+  const t0 = performance.now();
   try{
-    const ab=await fetchData();
-    const{sell,unsell,fba,rpt,lt}=parseSheets(ab);
-    allRows=mergeData(sell,unsell,fba,rpt,lt);
-    filteredRows=[...allRows];
+    const {abFba, abFc} = await fetchBoth();
+    const {sell, unMap, amzFul, manage, rsv, fbaInv} = parseSheets(abFba, abFc);
+    allRows = mergeData(sell, unMap, amzFul, manage, rsv, fbaInv);
+    filteredRows = [...allRows];
     renderKPIs(allRows);
     renderCharts(allRows);
-    renderPoCharts(allRows);
     applyFilters();
 
-    const dp=$('dbg');
-    if(dbgLog.some(l=>l.includes('WARNING'))){dp.textContent='[Debug]\n'+dbgLog.join('\n');dp.style.display='block';}
+    const dp = $('dbg');
+    if(dbgLog.some(l => l.includes('WARNING'))){ dp.textContent='[Debug]\n'+dbgLog.join('\n'); dp.style.display='block'; }
 
-    $('scr-load').style.display='none';
-    $('scr-dash').style.display='block';
-    const ms=((performance.now()-t0)/1000).toFixed(2);
+    $('scr-load').style.display = 'none';
+    $('scr-dash').style.display = 'block';
+    const ms = ((performance.now()-t0)/1000).toFixed(2);
     set('last-sync','Last synced: '+new Date().toLocaleString());
     set('slbl','Live');
     set('tft','Loaded in '+ms+'s');
-    $('sdot').className='sdot live';
+    $('sdot').className = 'sdot live';
   }catch(err){
-    $('scr-load').style.display='none';
-    $('scr-err').style.display='block';
-    $('errbody').textContent=err.message+'\n\n[Debug Log]\n'+dbgLog.join('\n')+'\n\nNote: Sheet must be shared as "Anyone with the link can view".';
+    $('scr-load').style.display = 'none';
+    $('scr-err').style.display  = 'block';
+    $('errbody').textContent = err.message+'\n\n[Debug Log]\n'+dbgLog.join('\n')+'\n\nNote: Both sheets must be shared as "Anyone with the link can view".';
     set('slbl','Error');
-    $('sdot').className='sdot err';
+    $('sdot').className = 'sdot err';
   }
 }
 
 boot();
 
-  setInterval(() => {
-    location.reload();
-}, 180000); 
+setInterval(() => { location.reload(); }, 1800000);
 </script>
 
 <footer style="text-align:center;padding:18px 0 22px;font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:#3a3d50;letter-spacing:0.06em;">
