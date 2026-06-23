@@ -784,14 +784,14 @@ function parseSheets(abFba, abFc){
   const ibN  = findSheet(wbFba, SH_FBA_INV);
 
   if(!aN)   throw new Error(`Sheet "${SH_AMZ_FUL}" not found in FBA workbook. Available: ${wbFba.SheetNames.join(', ')}`);
-  if(!mN)   throw new Error(`Sheet "${SH_MANAGE}" not found in FBA workbook. Available: ${wbFba.SheetNames.join(', ')}`);
-  if(!rsvN) throw new Error(`Sheet "${SH_RESERVED}" not found in FBA workbook. Available: ${wbFba.SheetNames.join(', ')}`);
+  if(!ibN)  throw new Error(`Sheet "${SH_FBA_INV}" not found in FBA workbook. Available: ${wbFba.SheetNames.join(', ')}`);
 
   const amzFul = sheetToRows(wbFba.Sheets[aN]);
-  const manage = sheetToRows(wbFba.Sheets[mN]);
-  const rsv    = sheetToRows(wbFba.Sheets[rsvN]);
-  const fbaInv = ibN ? sheetToRows(wbFba.Sheets[ibN]) : [];
-  if(!ibN) dbg('WARNING: Sheet "FBA_Inv" not found — inbound will be 0');
+  const manage = mN   ? sheetToRows(wbFba.Sheets[mN])   : [];
+  const rsv    = rsvN ? sheetToRows(wbFba.Sheets[rsvN]) : [];
+  const fbaInv = sheetToRows(wbFba.Sheets[ibN]);
+  if(!mN)   dbg('Sheet "Manage_FBA_inv" not found — unused, skipping');
+  if(!rsvN) dbg('Sheet "Reserved_inv" not found — unused, skipping');
 
   // FC workbook
   const wbFc = XLSX.read(abFc, {type:'array', cellDates:true});
