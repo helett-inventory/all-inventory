@@ -245,7 +245,7 @@ td:last-child{border-right:none;}
   <div class="kpi-grid">
     <div class="kpi ci"><div class="kpi-lbl">Total Sellable</div><div class="kpi-val" id="k0">—</div><div class="kpi-sub">FC + On Hand</div></div>
     <div class="kpi cg"><div class="kpi-lbl">FC Sellable</div><div class="kpi-val" id="k1">—</div><div class="kpi-sub">Warehouse stock</div></div>
-    <div class="kpi cb"><div class="kpi-lbl">FBA Available</div><div class="kpi-val" id="k2">—</div><div class="kpi-sub">Amz_fulfilled_inv sellable</div></div>
+    <div class="kpi cb"><div class="kpi-lbl">FBA Available</div><div class="kpi-val" id="k2">—</div><div class="kpi-sub">FBA_Inv available (+ Amz fallback)</div></div>
     <div class="kpi cp" style="--after-color:#c4b5fd;"><div class="kpi-lbl">On Hand</div><div class="kpi-val" id="k_onhand" style="color:#c4b5fd;">—</div><div class="kpi-sub">FBA Avail + FC Transfer</div></div>
     <div class="kpi ct"><div class="kpi-lbl">FC Transfer</div><div class="kpi-val" id="k_fct" style="color:#5eead4;">—</div><div class="kpi-sub">Reserved FC-transfers</div></div>
     <div class="kpi cp"><div class="kpi-lbl">Total Unsellable</div><div class="kpi-val" id="k3">—</div><div class="kpi-sub">FC + FBA unsellable</div></div>
@@ -957,6 +957,35 @@ function buildInboundMap(fbaInv){
   return ibMap;
 }
 
+// FBA_Inv → fbaInvAvailMap (available col) — primary source for FBA Available
+function buildFbaInvAvailMap(fbaInv){
+  const avMap = new Map();
+  if(!fbaInv.length){ dbg('FBA_Inv (available): empty'); return avMap; }
+
+  const h = Object.keys(fbaInv[0]);
+  const asinCol = detectCol(h, ['asin']);
+  const avCol   = detectCol(h, ['available','afn-fulfillable-quantity','fulfillable','avail']);
+
+  dbg('FBA_Inv avail cols → asin:', asinCol, 'available:', avCol);
+
+  if(!asinCol || !avCol){
+    dbg('WARNING: FBA_Inv "available" col not found. Headers:', h.join(', '));
+    return avMap;
+  }
+
+  for(const row of fbaInv){
+    const asin = norm(row[asinCol]);
+    if(!asin || asin === 'ASIN' || ASIN_BLOCKLIST.has(asin)) continue;
+    const qty = toNum(row[avCol]);
+    avMap.set(asin, (avMap.get(asin)||0) + qty);
+  }
+
+  dbg('FBA_Inv avail map entries:', avMap.size);
+  return avMap;
+}
+
+// ══════════════════════════════════════════
+// MERGE
 // ══════════════════════════════════════════
 // MERGE
 // ══════════════════════════════════════════
@@ -965,8 +994,9 @@ function mergeData(sell, unMap, amzFul, manage, rsv, fbaInv){
 
   // ── Build FBA maps ──
   const {fbaAvailMap, fbaUnsellMap, fbaSkuMap} = buildAmzFulMaps(amzFul);
-  const fctMap = buildReservedMap(fbaInv);
-  const ibMap  = buildInboundMap(fbaInv);
+  const fctMap       = buildReservedMap(fbaInv);
+  const ibMap        = buildInboundMap(fbaInv);
+  const fbaInvAvailMap = buildFbaInvAvailMap(fbaInv);  // primary FBA Available source
   // Manage_FBA_inv (afn-fulfillable-quantity) no longer used — On Hand = Amz_fulfilled_inv SELLABLE
 
   // ── FC sell map ──
@@ -993,12 +1023,14 @@ function mergeData(sell, unMap, amzFul, manage, rsv, fbaInv){
   const merged = [];
 
   // All ASINs from FBA side (Amz_fulfilled_inv is primary FBA source)
-  const fbaSet = new Set([...fbaAvailMap.keys(), ...fbaUnsellMap.keys(), ...fbaSkuMap.keys()]);
+  const fbaSet = new Set([...fbaAvailMap.keys(), ...fbaUnsellMap.keys(), ...fbaSkuMap.keys(), ...fbaInvAvailMap.keys()]);
 
   for(const asin of fbaSet){
     if(ASIN_BLOCKLIST.has(asin)) continue;
     const sku        = resolveSkuName(asin, fbaSkuMap.get(asin)||'--');
-    const fbaAvail   = fbaAvailMap.get(asin)  || 0;   // SELLABLE from Amz_fulfilled_inv
+    const fbaAvail   = fbaInvAvailMap.has(asin)
+                         ? fbaInvAvailMap.get(asin)          // primary: FBA_Inv "available"
+                         : (fbaAvailMap.get(asin) || 0);    // fallback: Amz_fulfilled_inv SELLABLE
     const fbaUnsell  = fbaUnsellMap.get(asin) || 0;
     const fcTransfer = fctMap.get(asin)        || 0;   // reserved_fc-transfers (display only)
     const inbound    = ibMap.get(asin)          || 0;   // inbound-quantity
